@@ -35,16 +35,13 @@ import com.morgen.rentalmanager.ui.setting.SettingScreen
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import java.net.URLDecoder
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.activity.compose.BackHandler
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
+
+// 共享的动画缓动曲线
+private val SharedEasing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 @Composable
 fun AppNavigation() {
@@ -54,134 +51,39 @@ fun AppNavigation() {
     var showAddTenant by remember { mutableStateOf(false) }
     var showAddBillAll by remember { mutableStateOf(false) }
     
-    // 控制模糊效果 - 完全独立的状态
+    // 控制模糊效果
     var blurRadius by remember { mutableStateOf(0f) }
-    
-        // 主界面滑动状态 - 恢复主界面偏移控制
-    var mainContentOffset by remember { mutableStateOf(Offset.Zero) }
-    
-    // 为主界面添加响应动画，当被覆盖时的移动效果
-    val mainContentScope = rememberCoroutineScope()
 
-    // 主界面偏移动画
-    val animatedOffsetX by animateFloatAsState(
-        targetValue = mainContentOffset.x.toFloat(),
-        animationSpec = tween(
-            durationMillis = 500, // 增加动画时长，让覆盖过程更明显
-            easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f) // 使用特殊缓动曲线
-        ),
-        label = "offset_animation_x"
-    )
-    
-    val animatedOffsetY by animateFloatAsState(
-        targetValue = mainContentOffset.y.toFloat(),
-        animationSpec = tween(
-            durationMillis = 500, // 增加动画时长，让覆盖过程更明显
-            easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f) // 使用特殊缓动曲线
-        ),
-        label = "offset_animation_y"
-    )
-
-    // 使用与页面滑入相同的tween动画，确保完美同步
+    // 模糊动画
     val animatedBlurRadius by animateFloatAsState(
         targetValue = blurRadius,
-        animationSpec = tween(
-            durationMillis = 300, // 与最终的滑入动画完全一致
-            easing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1.0f) // 使用相同的Material Design缓动
-        ),
+        animationSpec = tween(durationMillis = 300, easing = SharedEasing),
         label = "blur_animation"
     )
     
-    // 重置模糊的函数
-    val resetBlur = {
-        blurRadius = 0f
-    }
-    
-    // 应用模糊的函数 - 减少模糊强度以提升性能
-    val applyBlur = {
-        blurRadius = 6f // 减少模糊强度，提升动画流畅度
-    }
-    
     // 处理系统返回键事件
     BackHandler(enabled = showAddTenant || showAddBillAll) {
-        // 如果任一叠加页面显示，关闭它而不是退出应用
         if (showAddTenant) {
             showAddTenant = false
-            resetBlur() // 立即重置模糊效果
+            blurRadius = 0f
         } else if (showAddBillAll) {
             showAddBillAll = false
-            resetBlur() // 立即重置模糊效果
+            blurRadius = 0f
         }
     }
     
-    // 在组件销毁时确保模糊被重置
-    DisposableEffect(Unit) {
-        onDispose {
-            // 组件销毁时重置模糊
-            resetBlur()
-        }
-    }
-    
-    // 监听叠加页面状态，控制模糊效果与主界面移动效果 - 完全同步
+    // 监听叠加页面状态，控制模糊效果
     LaunchedEffect(showAddTenant, showAddBillAll) {
-        if (showAddTenant) {
-            // 立即开始模糊，与动画完全同步
-            applyBlur()
-            // 当AddTenant显示时，向上移动主界面 - 恢复下推上的效果
-            mainContentOffset = Offset(0f, -600f)
-        } else if (showAddBillAll) {
-            // 立即开始模糊，与动画完全同步
-            applyBlur()
-            // 当AddBill显示时，向上移动主界面
-            mainContentOffset = Offset(0f, -600f)
-        } else {
-            // 立即重置模糊和位移，让退出动画更流畅
-            resetBlur()
-            mainContentOffset = Offset.Zero
-        }
-    }
-    
-    // 监听导航变化，为普通页面导航添加主界面位移效果
-    DisposableEffect(navController) {
-        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
-            // 排除叠加页面的影响（它们有自己的动画处理）
-            if (!showAddTenant && !showAddBillAll) {
-                // 为不同页面设置不同的偏移效果
-                when (destination.route) {
-                    "main" -> {
-                        // 主页面重置偏移
-                        mainContentOffset = Offset.Zero
-                    }
-                    else -> {
-                        // 导航动画中已经有页面偏移，这里不需要额外偏移
-                        // 将偏移量设置为零，避免干扰导航动画
-                        mainContentOffset = Offset.Zero
-                    }
-                }
-            }
-        }
-        
-        navController.addOnDestinationChangedListener(listener)
-        
-        onDispose {
-            navController.removeOnDestinationChangedListener(listener)
-        }
+        blurRadius = if (showAddTenant || showAddBillAll) 6f else 0f
     }
     
     // 主导航和叠加页面容器
     Box(modifier = Modifier.fillMaxSize()) {
         
-        // 主导航内容 - 性能优化
+        // 主导航内容
         Box(modifier = Modifier
             .fillMaxSize()
             .blur(radius = animatedBlurRadius.dp)
-            .graphicsLayer {
-                // 应用动画偏移
-                translationX = animatedOffsetX
-                translationY = animatedOffsetY
-                // 优化合成性能
-                compositingStrategy = CompositingStrategy.ModulateAlpha
-            }
         ) {
             NavHost(
                 navController = navController, 
@@ -370,78 +272,38 @@ fun AppNavigation() {
             }
         }
         
-        // 自定义覆盖动画，保留原覆盖效果，确保有完整的上推效果
-        // 租户页面使用从底部覆盖动画 - 重新定义以确保效果正确
-        val tenantEnterTransition = slideInVertically(
-            animationSpec = tween(
-                durationMillis = 500,
-                easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-            )
-        ) { fullHeight -> fullHeight }
+        // 共享的从底部覆盖动画（租户和账单页面都使用）
+        val overlayEnter = slideInVertically(
+            animationSpec = tween(durationMillis = 500, easing = SharedEasing)
+        ) { it }
         
-        val tenantExitTransition = slideOutVertically(
-            animationSpec = tween(
-                durationMillis = 450,
-                easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-            )
-        ) { fullHeight -> fullHeight }
+        val overlayExit = slideOutVertically(
+            animationSpec = tween(durationMillis = 450, easing = SharedEasing)
+        ) { it }
         
-        // 账单页面使用从底部覆盖动画
-        val billEnterTransition = slideInVertically(
-            animationSpec = tween(
-                durationMillis = 500,
-                easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-            )
-        ) { fullHeight -> fullHeight }
-        
-        val billExitTransition = slideOutVertically(
-            animationSpec = tween(
-                durationMillis = 450,
-                easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
-            )
-        ) { fullHeight -> fullHeight }
-        
-        // 自定义覆盖动画组合
-        
-        // 添加租户页面 - 使用覆盖式动画
+        // 添加租户页面
         AnimatedVisibility(
             visible = showAddTenant,
-            enter = tenantEnterTransition,
-            exit = tenantExitTransition,
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(10f) // 确保覆盖页面始终在顶层
-                .graphicsLayer {
-                    // 启用硬件加速，提升动画性能
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
+            enter = overlayEnter,
+            exit = overlayExit,
+            modifier = Modifier.fillMaxSize().zIndex(10f)
         ) {
             AddTenantScreen(
                 navController = navController,
-                onDismiss = {
-                    showAddTenant = false
-                }
+                onDismiss = { showAddTenant = false }
             )
         }
         
-        // 添加账单页面 - 使用覆盖式动画
+        // 添加账单页面
         AnimatedVisibility(
             visible = showAddBillAll,
-            enter = billEnterTransition,
-            exit = billExitTransition,
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(10f) // 确保覆盖页面始终在顶层
-                .graphicsLayer {
-                    // 启用硬件加速，提升动画性能
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
+            enter = overlayEnter,
+            exit = overlayExit,
+            modifier = Modifier.fillMaxSize().zIndex(10f)
         ) {
             AddBillAllScreen(
                 navController = navController,
-                onDismiss = {
-                    showAddBillAll = false
-                }
+                onDismiss = { showAddBillAll = false }
             )
         }
     }

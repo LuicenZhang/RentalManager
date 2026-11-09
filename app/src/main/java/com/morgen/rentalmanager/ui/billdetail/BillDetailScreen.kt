@@ -11,14 +11,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.morgen.rentalmanager.TenantApplication
 import com.morgen.rentalmanager.myapplication.TenantRepository
+import com.morgen.rentalmanager.ui.components.FrostedBlurTopBar
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
 import com.morgen.rentalmanager.ui.theme.*
 
 /**
@@ -42,11 +49,10 @@ fun BillDetailScreen(
     repository: TenantRepository? = null,
     modifier: Modifier = Modifier
 ) {
-    // 获取ViewModel实例
+    // ... ViewModel setup ...
     val viewModel: BillDetailViewModel = if (repository != null) {
         viewModel(factory = BillDetailViewModelFactory(repository))
     } else {
-        // 如果没有提供repository，从Application获取
         val context = LocalContext.current
         val application = context.applicationContext as TenantApplication
         viewModel(factory = BillDetailViewModelFactory(application.repository))
@@ -57,101 +63,100 @@ fun BillDetailScreen(
         viewModel.loadBillDetail(roomNumber, month)
     }
     
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val topContentPadding = statusBarHeight + 80.dp // 80dp to clear the floating pill (56dp + padding)
+
     // 收集状态
     val uiState by viewModel.uiState.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(ModernColors.Background) // 添加纯色背景，防止透出主页内容
+    // Backdrop for glass effects
+    val topBarBackdrop = rememberLayerBackdrop()
+    val cardBackdrop = rememberLayerBackdrop()
+    
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
-        // 顶部应用栏
-        TopAppBar(
-            title = {
-                Column {
-                    Text(
-                        text = "账单详情",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "$roomNumber - ${month}月",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ModernColors.OnSurfaceVariant
-                    )
-                }
-            },
-            navigationIcon = {
-                IconButton(
-                    onClick = { 
-                        // 处理返回逻辑
-                        try {
-                            navController.popBackStack()
-                        } catch (e: Exception) {
-                            // 如果返回失败，导航到账单列表页面
-                            navController.navigate("bill_list") {
-                                popUpTo("main") { inclusive = false }
-                            }
-                        }
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
-                        tint = ModernColors.OnSurface
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = ModernColors.Surface,
-                titleContentColor = ModernColors.OnSurface
+        // Content layer wrapped in layerBackdrop so TopBar can blur it
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(topBarBackdrop)
+        ) {
+            // Background layer captured by cardBackdrop
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .layerBackdrop(cardBackdrop)
+                    .background(ModernColors.Background)
             )
-        )
-        
-        // 主要内容区域
-        when (uiState) {
-            is BillDetailUiState.Loading -> {
-                LoadingContent(
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
             
-            is BillDetailUiState.Success -> {
-                val successState = uiState as BillDetailUiState.Success
-                SuccessContent(
-                    billDetail = successState.billDetail,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            
-            is BillDetailUiState.Error -> {
-                val errorState = uiState as BillDetailUiState.Error
-                ErrorContent(
-                    error = errorState,
-                    onRetry = { viewModel.loadBillDetail(roomNumber, month) },
-                    onNavigateBack = { 
-                        navController.navigate("bill_list") {
-                            popUpTo("main") { inclusive = false }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            
-            is BillDetailUiState.NotFound -> {
-                NotFoundContent(
-                    roomNumber = roomNumber,
-                    month = month,
-                    onNavigateBack = { 
-                        navController.navigate("bill_list") {
-                            popUpTo("main") { inclusive = false }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+            // Scrollable content
+            when (uiState) {
+                is BillDetailUiState.Loading -> {
+                    LoadingContent(
+                        topPadding = topContentPadding,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                
+                is BillDetailUiState.Success -> {
+                    val successState = uiState as BillDetailUiState.Success
+                    SuccessContent(
+                        billDetail = successState.billDetail,
+                        cardBackdrop = cardBackdrop,
+                        topPadding = topContentPadding,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                
+                is BillDetailUiState.Error -> {
+                    val errorState = uiState as BillDetailUiState.Error
+                    ErrorContent(
+                        error = errorState,
+                        onRetry = { 
+                            viewModel.loadBillDetail(roomNumber, month)
+                        },
+                        onNavigateBack = { navController.popBackStack() },
+                        cardBackdrop = cardBackdrop,
+                        topPadding = topContentPadding,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                
+                is BillDetailUiState.NotFound -> {
+                    NotFoundContent(
+                        roomNumber = roomNumber,
+                        month = month,
+                        onNavigateBack = { navController.popBackStack() },
+                        cardBackdrop = cardBackdrop,
+                        topPadding = topContentPadding,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
+        
+        // Top gradient overlay for smooth status bar transition
+        com.morgen.rentalmanager.ui.components.TopGradientOverlay(
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+        
+        // 玻璃顶栏 - Floating above content
+        FrostedBlurTopBar(
+            title = "账单详情",
+            backdrop = topBarBackdrop,
+            overlayColor = Color.Transparent,
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            onIconClick = {
+                try {
+                    navController.popBackStack()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            },
+            showMenu = false
+        )
     }
 }
 
@@ -160,10 +165,11 @@ fun BillDetailScreen(
  */
 @Composable
 private fun LoadingContent(
+    topPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier,
+        modifier = modifier.padding(top = topPadding),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -192,6 +198,8 @@ private fun LoadingContent(
 @Composable
 private fun SuccessContent(
     billDetail: BillDetailData,
+    cardBackdrop: Backdrop,
+    topPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -200,19 +208,30 @@ private fun SuccessContent(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(ModernSpacing.Medium),
+            .padding(top = topPadding, start = ModernSpacing.Medium, end = ModernSpacing.Medium, bottom = ModernSpacing.Medium),
         verticalArrangement = Arrangement.spacedBy(ModernSpacing.Medium)
     ) {
+        // 账单时间头部
+        Text(
+            text = "${billDetail.month}月",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = ModernColors.OnSurface
+        )
+        
         // 租户基本信息卡片
-        TenantInfoCard(billDetail = billDetail)
+        TenantInfoCard(billDetail = billDetail, backdrop = cardBackdrop)
         
         // 账单汇总卡片
-        BillSummaryDetailCard(billDetail = billDetail)
+        BillSummaryDetailCard(billDetail = billDetail, backdrop = cardBackdrop)
         
         // 费用明细卡片
         if (billDetail.hasDetails()) {
-            BillDetailsCard(billDetail = billDetail)
+            BillDetailsCard(billDetail = billDetail, backdrop = cardBackdrop)
         }
+        
+        // Bottom padding for navigation bar
+        Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
@@ -224,19 +243,20 @@ private fun ErrorContent(
     error: BillDetailUiState.Error,
     onRetry: () -> Unit,
     onNavigateBack: () -> Unit,
+    cardBackdrop: Backdrop,
+    topPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier,
+        modifier = modifier.padding(top = topPadding),
         contentAlignment = Alignment.Center
     ) {
-        Card(
+        LiquidGlassCard(
+            backdrop = cardBackdrop,
+            tintColor = ModernColors.Error,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(ModernSpacing.Large),
-            colors = CardDefaults.cardColors(
-                containerColor = ModernColors.ErrorContainer
-            )
+                .padding(ModernSpacing.Large)
         ) {
             Column(
                 modifier = Modifier
@@ -248,7 +268,7 @@ private fun ErrorContent(
                 Text(
                     text = "加载失败",
                     style = MaterialTheme.typography.titleMedium,
-                    color = ModernColors.OnErrorContainer,
+                    color = ModernColors.Error,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
@@ -256,7 +276,7 @@ private fun ErrorContent(
                 Text(
                     text = error.message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = ModernColors.OnErrorContainer,
+                    color = ModernColors.OnSurface,
                     textAlign = TextAlign.Center
                 )
                 
@@ -266,7 +286,7 @@ private fun ErrorContent(
                     OutlinedButton(
                         onClick = onNavigateBack,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = ModernColors.OnErrorContainer
+                            contentColor = ModernColors.OnSurface
                         )
                     ) {
                         Text("返回列表")
@@ -295,19 +315,19 @@ private fun NotFoundContent(
     roomNumber: String,
     month: String,
     onNavigateBack: () -> Unit,
+    cardBackdrop: Backdrop,
+    topPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier,
+        modifier = modifier.padding(top = topPadding),
         contentAlignment = Alignment.Center
     ) {
-        Card(
+        LiquidGlassCard(
+            backdrop = cardBackdrop,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(ModernSpacing.Large),
-            colors = CardDefaults.cardColors(
-                containerColor = ModernColors.SurfaceContainer
-            )
+                .padding(ModernSpacing.Large)
         ) {
             Column(
                 modifier = Modifier

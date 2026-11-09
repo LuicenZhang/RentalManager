@@ -21,7 +21,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.morgen.rentalmanager.ui.components.ElevatedCard
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
+import com.kyant.backdrop.Backdrop
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.morgen.rentalmanager.ui.theme.*
 import kotlin.math.*
 
@@ -32,10 +34,13 @@ import kotlin.math.*
 @Composable
 fun BillChartCard(
     chartData: List<ChartData>,
+    backdrop: Backdrop,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth()
+    LiquidGlassCard(
+        modifier = modifier.fillMaxWidth(),
+        backdrop = backdrop,
+        shape = RoundedCornerShape(ModernCorners.Medium)
     ) {
         Column(
             modifier = Modifier

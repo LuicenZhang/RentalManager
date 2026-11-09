@@ -11,19 +11,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.morgen.rentalmanager.ui.components.ElevatedCard
+import com.kyant.backdrop.Backdrop
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
 import com.morgen.rentalmanager.ui.theme.*
 import com.morgen.rentalmanager.utils.AmountFormatter
 
 /**
- * 租户基本信息卡片
+ * 租户基本信息卡片 - 玻璃化版本
  */
 @Composable
 fun TenantInfoCard(
     billDetail: BillDetailData,
+    backdrop: Backdrop? = null,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    LiquidGlassCard(
+        backdrop = backdrop,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -41,7 +44,7 @@ fun TenantInfoCard(
             
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = ModernSpacing.Small),
-                color = ModernColors.OutlineVariant
+                color = ModernColors.OutlineVariant.copy(alpha = 0.5f)
             )
             
             // 房间号
@@ -73,14 +76,16 @@ fun TenantInfoCard(
 }
 
 /**
- * 账单汇总详情卡片
+ * 账单汇总详情卡片 - 玻璃化版本
  */
 @Composable
 fun BillSummaryDetailCard(
     billDetail: BillDetailData,
+    backdrop: Backdrop? = null,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    LiquidGlassCard(
+        backdrop = backdrop,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -98,7 +103,7 @@ fun BillSummaryDetailCard(
             
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = ModernSpacing.Small),
-                color = ModernColors.OutlineVariant
+                color = ModernColors.OutlineVariant.copy(alpha = 0.5f)
             )
             
             // 租金
@@ -137,7 +142,7 @@ fun BillSummaryDetailCard(
             
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = ModernSpacing.Small),
-                color = ModernColors.OutlineVariant
+                color = ModernColors.OutlineVariant.copy(alpha = 0.5f)
             )
             
             // 总金额
@@ -165,14 +170,16 @@ fun BillSummaryDetailCard(
 }
 
 /**
- * 费用明细卡片
+ * 费用明细卡片 - 玻璃化版本
  */
 @Composable
 fun BillDetailsCard(
     billDetail: BillDetailData,
+    backdrop: Backdrop? = null,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    LiquidGlassCard(
+        backdrop = backdrop,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -190,7 +197,7 @@ fun BillDetailsCard(
             
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = ModernSpacing.Small),
-                color = ModernColors.OutlineVariant
+                color = ModernColors.OutlineVariant.copy(alpha = 0.5f)
             )
             
             // 按类型分组显示明细
@@ -230,14 +237,16 @@ fun BillDetailsCard(
 }
 
 /**
- * 计费说明卡片
+ * 计费说明卡片 - 玻璃化版本
  */
 @Composable
 fun CalculationInfoCard(
     billDetail: BillDetailData,
+    backdrop: Backdrop? = null,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    LiquidGlassCard(
+        backdrop = backdrop,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
@@ -255,7 +264,7 @@ fun CalculationInfoCard(
             
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = ModernSpacing.Small),
-                color = ModernColors.OutlineVariant
+                color = ModernColors.OutlineVariant.copy(alpha = 0.5f)
             )
             
             // 水费计算说明
@@ -394,7 +403,7 @@ private fun DetailGroupSection(
         // 分组间的分隔线（除了最后一组）
         HorizontalDivider(
             modifier = Modifier.padding(vertical = ModernSpacing.Small),
-            color = ModernColors.OutlineVariant.copy(alpha = 0.5f)
+            color = ModernColors.OutlineVariant.copy(alpha = 0.3f)
         )
     }
 }

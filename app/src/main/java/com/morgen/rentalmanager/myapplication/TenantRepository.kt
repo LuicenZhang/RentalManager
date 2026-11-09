@@ -19,8 +19,12 @@ class TenantRepository(
     private val meterNameManager = com.morgen.rentalmanager.utils.MeterNameManager(meterNameConfigDao)
     // 移除内存缓存，直接使用Flow提供实时数据
 
-    // Tenant methods
+    // Tenant methods - 按房间号的拼音排序 (去除所有空格再比较)
     val allTenants: Flow<List<Tenant>> = tenantDao.getAllTenants()
+        .map { tenants ->
+            val chineseCollator = java.text.Collator.getInstance(java.util.Locale.CHINA)
+            tenants.sortedWith(compareBy(chineseCollator) { it.roomNumber.replace(" ", "") })
+        }
 
     fun getTenantById(roomNumber: String): Flow<Tenant?> = tenantDao.getTenantById(roomNumber)
 

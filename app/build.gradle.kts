@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
 
@@ -34,14 +35,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
     buildFeatures {
         compose = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
@@ -73,4 +74,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("com.google.code.gson:gson:2.10.1")
     // Using Compose-native blur effects instead of deprecated RenderScript
+    
+    // Liquid Glass blur effect library (from Maven Central)
+    implementation("io.github.kyant0:backdrop:1.0.4")
 }

@@ -1,15 +1,21 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+.idea/
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# the Liquid Glass sources, kept locally: the build pulls
+# io.github.kyant0:backdrop from Maven Central, not from this copy
+/AndroidLiquidGlass-1.0.2
+
+# the iOS port is its own thing and is not built from here
+/iOS
+
+# build output and exported data, not sources
+/build_log.txt
+/export_2025-07-10.json

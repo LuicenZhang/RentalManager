@@ -1,0 +1,13 @@
+# the tree was written with LF and edited on a machine that saves CRLF, which
+# made every touched file look rewritten.  keep LF in the repository and let
+# the checkout decide.
+* text=auto eol=lf
+
+# binaries: never touch these
+*.apk   binary
+*.dm    binary
+*.png   binary
+*.jpg   binary
+*.webp  binary
+*.jar   binary
+*.keystore binary

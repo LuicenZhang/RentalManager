@@ -11,7 +11,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachMoney
-// 移除不再使用的CloudUpload图标导入
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Water
 import androidx.compose.material.icons.filled.Bolt
@@ -38,7 +37,11 @@ import com.morgen.rentalmanager.ui.theme.ModernSpacing
 import com.morgen.rentalmanager.ui.theme.ModernCorners
 import com.morgen.rentalmanager.ui.theme.ModernIconSize
 import com.morgen.rentalmanager.ui.theme.ModernTouchTarget
-// 移除导入功能相关的导入语句
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.morgen.rentalmanager.ui.components.FrostedBlurTopBar
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
+import com.morgen.rentalmanager.ui.components.LiquidGlassButton
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -54,70 +57,50 @@ fun SettingScreen(navController: NavController){
     var newKeyword by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf<String?>(null) }
     
-    // 获取根据当前主题的界面背景色
-    val backgroundColor = if (isSystemInDarkTheme()) Color(0xFF121212) else Color.White
+    // Backdrop for glass effects
+    val topBarBackdrop = rememberLayerBackdrop()
+    val cardBackdrop = rememberLayerBackdrop()
     
-    // 获取根据当前主题的卡片背景色
-    val cardBackgroundColor = if (isSystemInDarkTheme()) Color(0xFF1A1A1A) else Color.White
-    
-    Scaffold(
-        containerColor = backgroundColor, // 根据主题使用适当的背景色
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        "设置",
-                        fontWeight = FontWeight.Medium,
-                        color = ModernColors.OnSurface
-                    ) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = ModernColors.OnSurface
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backgroundColor
-                )
-            )
-        }
-    ) { paddingValues ->
+    // Calculate padding for content
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val topContentPadding = statusBarHeight + 80.dp // Space for floating capsule top bar
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Content layer wrapped in layerBackdrop so TopBar can blur it
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(backgroundColor) // 根据主题使用适当的背景色
+                .layerBackdrop(topBarBackdrop)
         ) {
+            // Background layer captured by cardBackdrop
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .layerBackdrop(cardBackdrop)
+                    .background(ModernColors.Background)
+            )
+            
             // 创建滚动状态以检测滚动位置
             val scrollState = rememberLazyListState()
-            // 检测是否正在滚动或已滚动
-            val isScrolled = scrollState.firstVisibleItemIndex > 0 || scrollState.firstVisibleItemScrollOffset > 0
             
             LazyColumn(
                 state = scrollState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .padding(horizontal = ModernSpacing.Medium),
                 contentPadding = PaddingValues(
-                    top = ModernSpacing.Medium, // 保持统一的顶部间距
-                    bottom = ModernSpacing.Medium
+                    top = topContentPadding,
+                    bottom = 80.dp // Bottom padding for navigation bar
                 ),
-                verticalArrangement = Arrangement.spacedBy(ModernSpacing.Large) // 组件间距
+                verticalArrangement = Arrangement.spacedBy(ModernSpacing.Large)
             ) {
                 // 价格配置区域
                 item {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth(0.98f)
-                            .widthIn(max = 500.dp)
-                            .padding(ModernSpacing.Small),
-                        shape = RoundedCornerShape(ModernCorners.Large),
-                        color = cardBackgroundColor,
-                        shadowElevation = ModernElevation.Level2
+                    LiquidGlassCard(
+                        backdrop = cardBackdrop,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(ModernSpacing.Medium)) {
                             // 标题区域
@@ -160,9 +143,9 @@ fun SettingScreen(navController: NavController){
                                     )
                                 }
                             }
-    
+
                             HorizontalDivider(
-                                color = ModernColors.OutlineVariant,
+                                color = ModernColors.OutlineVariant.copy(alpha = 0.5f),
                                 thickness = 1.dp,
                                 modifier = Modifier.padding(vertical = ModernSpacing.Small)
                             )
@@ -264,14 +247,9 @@ fun SettingScreen(navController: NavController){
                 
                 // 隐私保护设置区域
                 item {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth(0.98f)
-                            .widthIn(max = 500.dp)
-                            .padding(ModernSpacing.Small),
-                        shape = RoundedCornerShape(ModernCorners.Large),
-                        color = cardBackgroundColor,
-                        shadowElevation = ModernElevation.Level2
+                    LiquidGlassCard(
+                        backdrop = cardBackdrop,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(ModernSpacing.Medium)) {
                             // 隐私保护标题
@@ -314,7 +292,7 @@ fun SettingScreen(navController: NavController){
                             }
                             
                             HorizontalDivider(
-                                color = ModernColors.OutlineVariant,
+                                color = ModernColors.OutlineVariant.copy(alpha = 0.5f),
                                 thickness = 1.dp,
                                 modifier = Modifier.padding(vertical = ModernSpacing.Small)
                             )
@@ -379,7 +357,7 @@ fun SettingScreen(navController: NavController){
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(ModernSpacing.XSmall),
                                     verticalArrangement = Arrangement.spacedBy(ModernSpacing.XSmall),
-                                    maxItemsInEachRow = 4 // 每行最多4个标签
+                                    maxItemsInEachRow = 4
                                 ) {
                                     privacyKeywords.forEach { keyword ->
                                         Surface(
@@ -422,8 +400,7 @@ fun SettingScreen(navController: NavController){
                                 
                                 Surface(
                                     shape = RoundedCornerShape(ModernCorners.Medium),
-                                    color = ModernColors.SurfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(1.dp, ModernColors.Outline.copy(alpha = 0.3f))
+                                    color = ModernColors.SurfaceVariant.copy(alpha = 0.3f)
                                 ) {
                                     Text(
                                         text = "暂无设置关键字，添加关键字后将在收据中隐藏相应内容",
@@ -439,87 +416,97 @@ fun SettingScreen(navController: NavController){
                 
                 // 操作按钮区域
                 item {
-                    Button(
+                    LiquidGlassButton(
                         onClick = { vm.save{ navController.popBackStack() } },
+                        backdrop = cardBackdrop,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(ModernTouchTarget.Comfortable)
-                            .padding(horizontal = ModernSpacing.Large),
-                        shape = RoundedCornerShape(ModernCorners.Medium),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ModernColors.Primary
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = ModernElevation.Level1
-                        )
+                            .padding(horizontal = ModernSpacing.Large)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Save,
                             contentDescription = null,
                             modifier = Modifier.size(ModernIconSize.Medium),
-                            tint = Color.White
+                            tint = ModernColors.Primary
                         )
                         Spacer(modifier = Modifier.width(ModernSpacing.Small))
                         Text(
                             "保存设置",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                            color = ModernColors.Primary
                         )
                     }
-                }
-                
-                // 添加底部空间，确保内容不被遮挡
-                item {
-                    Spacer(modifier = Modifier.height(ModernSpacing.Large))
                 }
             }
         }
         
-        // 删除确认对话框
-        showDeleteDialog?.let { keyword ->
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = null },
-                title = {
+        // Top gradient overlay for smooth status bar transition
+        com.morgen.rentalmanager.ui.components.TopGradientOverlay(
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+        
+        // 玻璃顶栏 - Floating above content
+        FrostedBlurTopBar(
+            title = "设置",
+            backdrop = topBarBackdrop,
+            overlayColor = Color.Transparent,
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            onIconClick = {
+                try {
+                    navController.popBackStack()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            },
+            showMenu = false
+        )
+    }
+    
+    // 删除确认对话框
+    showDeleteDialog?.let { keyword ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = {
+                Text(
+                    text = "确认删除",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text(
+                    text = "确定要删除关键字 \"$keyword\" 吗？",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.removePrivacyKeyword(keyword)
+                        showDeleteDialog = null
+                    }
+                ) {
                     Text(
-                        text = "确认删除",
-                        style = MaterialTheme.typography.titleMedium,
+                        text = "删除",
+                        color = ModernColors.Error,
                         fontWeight = FontWeight.SemiBold
                     )
-                },
-                text = {
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteDialog = null }
+                ) {
                     Text(
-                        text = "确定要删除关键字 \"$keyword\" 吗？",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "取消",
+                        color = ModernColors.OnSurfaceVariant
                     )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            vm.removePrivacyKeyword(keyword)
-                            showDeleteDialog = null
-                        }
-                    ) {
-                        Text(
-                            text = "删除",
-                            color = ModernColors.Error,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showDeleteDialog = null }
-                    ) {
-                        Text(
-                            text = "取消",
-                            color = ModernColors.OnSurfaceVariant
-                        )
-                    }
-                },
-                containerColor = ModernColors.Surface,
-                shape = RoundedCornerShape(ModernCorners.Large)
-            )
-        }
+                }
+            },
+            containerColor = ModernColors.Surface,
+            shape = RoundedCornerShape(ModernCorners.Large)
+        )
     }
 }

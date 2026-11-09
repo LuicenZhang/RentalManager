@@ -10,6 +10,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.morgen.rentalmanager.ui.theme.ModernSpacing
 import com.morgen.rentalmanager.ui.theme.MyApplicationTheme
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * 账单列表内容组件演示
@@ -63,6 +64,7 @@ fun BillListContentDemo() {
  */
 @Composable
 private fun BillListWithDataDemo() {
+    val backdrop = rememberLayerBackdrop()
     val sampleBills = listOf(
         BillItem(
             roomNumber = "101",
@@ -119,6 +121,7 @@ private fun BillListWithDataDemo() {
     BillListContent(
         bills = sampleBills,
         selectedMonth = "2024-01",
+        backdrop = backdrop,
         onBillClick = { roomNumber, month ->
             // 演示用，实际会导航到详情页面
             println("点击了房间 $roomNumber 的 $month 账单")
@@ -132,6 +135,7 @@ private fun BillListWithDataDemo() {
  */
 @Composable
 private fun BillListEmptyDemo() {
+    val backdrop = rememberLayerBackdrop()
     Text(
         text = "空状态账单列表",
         style = MaterialTheme.typography.titleMedium,
@@ -141,6 +145,7 @@ private fun BillListEmptyDemo() {
     BillListContent(
         bills = emptyList(),
         selectedMonth = "2024-02",
+        backdrop = backdrop,
         onBillClick = { _, _ -> },
         modifier = Modifier.height(300.dp)
     )
@@ -151,6 +156,7 @@ private fun BillListEmptyDemo() {
  */
 @Composable
 private fun SingleBillItemDemo() {
+    val backdrop = rememberLayerBackdrop()
     Text(
         text = "不同状态的账单卡片",
         style = MaterialTheme.typography.titleMedium,
@@ -177,6 +183,7 @@ private fun SingleBillItemDemo() {
                 electricityUsage = 100.0,
                 totalAmount = 1630.0
             ),
+            backdrop = backdrop,
             onClick = { println("点击了完整数据卡片") }
         )
         
@@ -199,6 +206,7 @@ private fun SingleBillItemDemo() {
                 electricityUsage = 0.0,
                 totalAmount = 1200.0
             ),
+            backdrop = backdrop,
             onClick = { println("点击了只有租金卡片") }
         )
         
@@ -221,6 +229,7 @@ private fun SingleBillItemDemo() {
                 electricityUsage = 0.0,
                 totalAmount = 0.0
             ),
+            backdrop = backdrop,
             onClick = { println("点击了无费用卡片") }
         )
     }

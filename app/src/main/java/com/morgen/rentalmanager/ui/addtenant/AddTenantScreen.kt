@@ -3,6 +3,7 @@ package com.morgen.rentalmanager.ui.addtenant
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -22,19 +23,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.morgen.rentalmanager.TenantApplication
 import com.morgen.rentalmanager.myapplication.Tenant
-import com.morgen.rentalmanager.ui.theme.ModernColors
-import com.morgen.rentalmanager.ui.theme.ModernElevation
-import com.morgen.rentalmanager.ui.theme.ModernSpacing
-import com.morgen.rentalmanager.ui.theme.ModernCorners
-import com.morgen.rentalmanager.ui.theme.ModernTypography
-import com.morgen.rentalmanager.ui.theme.ModernIconSize
-import com.morgen.rentalmanager.ui.theme.ModernTouchTarget
-import com.morgen.rentalmanager.ui.components.AnimatedButton
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.LinearOutSlowInEasing
+import com.morgen.rentalmanager.ui.theme.*
+import com.morgen.rentalmanager.ui.components.FrostedBlurTopBar
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
+import com.morgen.rentalmanager.ui.components.LiquidGlassButton
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -54,68 +48,48 @@ fun AddTenantScreen(
     var name by remember { mutableStateOf("") }
     var rent by remember { mutableStateOf("") }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        "添加租户",
-                        fontWeight = FontWeight.Medium,
-                        color = ModernColors.OnSurface
-                    ) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = { 
-                        // 确保onDismiss回调被执行
-                        onDismiss()
-                        // 延迟一小段时间后再次调用，确保状态同步
-                        kotlinx.coroutines.MainScope().launch {
-                            delay(50)
-                            onDismiss()
-                        }
-                        
-                        // 如果是从普通导航进入的，则支持返回导航
-                        if (navController.previousBackStackEntry != null) {
-                            navController.popBackStack()
-                        }
-                    }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack, 
-                            contentDescription = "返回",
-                            tint = ModernColors.OnSurface
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ModernColors.Surface
-                )
-            )
-        }
-    ) { paddingValues ->
+    // Calculate top padding based on status bar height + TopAppBar height
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val topPadding = statusBarHeight + 64.dp + ModernSpacing.Large
+
+    // Create Backdrop for glass effects
+    val topBarBackdrop = rememberLayerBackdrop()
+    val cardBackdrop = rememberLayerBackdrop()
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // 主要内容区域 - 使用 layerBackdrop(topBarBackdrop) 让 TopBar 可以捕获全部内容
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ModernColors.Background)
+                .layerBackdrop(topBarBackdrop)
         ) {
-            Column(
+            // Background layer - 嵌套在 topBarBackdrop 内，用于卡片的玻璃效果采样
+            // 这样 TopBar 模糊时可以完整捕获卡片的玻璃效果
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(ModernSpacing.Large)
+                    .layerBackdrop(cardBackdrop)
+                    .background(ModernColors.Background)
+            )
+
+            // Content - 在 cardBackdrop 之后，但仍在 topBarBackdrop 内
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = topPadding,
+                    bottom = ModernSpacing.Large,
+                    start = ModernSpacing.Large,
+                    end = ModernSpacing.Large
+                )
             ) {
-                // 标题区域 - 现代化设计，带入场动画
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(
-                        animationSpec = tween(300, easing = LinearOutSlowInEasing)
-                    ) { -it / 2 } + fadeIn(
-                        animationSpec = tween(300, easing = LinearOutSlowInEasing)
-                    )
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(ModernCorners.Large),
-                        color = ModernColors.Surface,
-                        shadowElevation = ModernElevation.Level1
+                // Headline Section
+                item {
+                    LiquidGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        backdrop = cardBackdrop,
+                        shape = RoundedCornerShape(ModernCorners.Medium)
                     ) {
                         Row(
                             modifier = Modifier
@@ -139,9 +113,9 @@ fun AddTenantScreen(
                                     modifier = Modifier.size(ModernIconSize.Large)
                                 )
                             }
-                            
+
                             Spacer(modifier = Modifier.width(ModernSpacing.Medium))
-                            
+
                             Column {
                                 Text(
                                     text = "新增租户",
@@ -157,160 +131,183 @@ fun AddTenantScreen(
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(ModernSpacing.Large))
                 }
-                
-                Spacer(modifier = Modifier.height(ModernSpacing.Large))
-                
-                // 表单区域 - 现代化设计
-                Surface(
-                    shape = RoundedCornerShape(ModernCorners.Large),
-                    color = ModernColors.Surface,
-                    shadowElevation = ModernElevation.Level1
-                ) {
-                    Column(modifier = Modifier.padding(ModernSpacing.Large)) {
-                        Text(
-                            text = "基本信息",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = ModernColors.OnSurface,
-                            modifier = Modifier.padding(bottom = ModernSpacing.Medium)
-                        )
-                        
-                        OutlinedTextField(
-                            value = roomNumber,
-                            onValueChange = { roomNumber = it },
-                            label = { Text("房间号", color = ModernColors.Primary) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(ModernCorners.Medium),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = ModernColors.Primary,
-                                unfocusedBorderColor = ModernColors.Outline,
-                                focusedLabelColor = ModernColors.Primary
-                            )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(ModernSpacing.Medium))
-                        
-                        OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            label = { Text("租户姓名", color = ModernColors.Primary) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(ModernCorners.Medium),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = ModernColors.Primary,
-                                unfocusedBorderColor = ModernColors.Outline,
-                                focusedLabelColor = ModernColors.Primary
-                            )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(ModernSpacing.Medium))
-                        
-                        OutlinedTextField(
-                            value = rent,
-                            onValueChange = { rent = it },
-                            label = { Text("月租金 (元)", color = ModernColors.Primary) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(ModernCorners.Medium),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = ModernColors.Primary,
-                                unfocusedBorderColor = ModernColors.Outline,
-                                focusedLabelColor = ModernColors.Primary
-                            )
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(ModernSpacing.Large))
-                
-                // 操作按钮区域 - 现代化设计
-                Surface(
-                    shape = RoundedCornerShape(ModernCorners.Large),
-                    color = ModernColors.Surface,
-                    shadowElevation = ModernElevation.Level1
-                ) {
-                    Column(modifier = Modifier.padding(ModernSpacing.Large)) {
-                        AnimatedButton(
-                            onClick = {
-                                val rentValue = rent.toDoubleOrNull()
-                                if (roomNumber.isNotBlank() && name.isNotBlank() && rentValue != null) {
-                                    val newTenant = Tenant(
-                                        roomNumber = roomNumber,
-                                        name = name,
-                                        rent = rentValue
-                                    )
-                                    viewModel.addTenant(newTenant)
-                                    
-                                    // 确保onDismiss回调被正确执行
-                                    onDismiss()
-                                    // 延迟一小段时间后再次调用，确保状态同步
-                                    kotlinx.coroutines.MainScope().launch {
-                                        delay(50)
-                                        onDismiss()
-                                    }
-                                    
-                                    // 如果是从普通导航进入的，则支持返回导航
-                                    if (navController.previousBackStackEntry != null) {
-                                        navController.popBackStack()
-                                    }
-                                } else {
-                                    Toast.makeText(context, "请填写所有字段", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(ModernTouchTarget.Comfortable),
-                            shape = RoundedCornerShape(ModernCorners.Medium),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = ModernColors.Primary
-                            ),
-                            elevation = ButtonDefaults.buttonElevation(
-                                defaultElevation = ModernElevation.Level1
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = null,
-                                modifier = Modifier.size(ModernIconSize.Medium),
-                                tint = Color.White
-                            )
-                            Spacer(modifier = Modifier.width(ModernSpacing.Small))
+
+                // Form Section
+                item {
+                    LiquidGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        backdrop = cardBackdrop,
+                        shape = RoundedCornerShape(ModernCorners.Medium)
+                    ) {
+                        Column(modifier = Modifier.padding(ModernSpacing.Large)) {
                             Text(
-                                "保存租户",
+                                text = "基本信息",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.White
+                                color = ModernColors.OnSurface,
+                                modifier = Modifier.padding(bottom = ModernSpacing.Medium)
+                            )
+
+                            OutlinedTextField(
+                                value = roomNumber,
+                                onValueChange = { roomNumber = it },
+                                label = { Text("房间号") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(ModernCorners.Medium),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = ModernColors.Primary,
+                                    unfocusedBorderColor = ModernColors.Outline,
+                                    focusedLabelColor = ModernColors.Primary
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(ModernSpacing.Medium))
+
+                            OutlinedTextField(
+                                value = name,
+                                onValueChange = { name = it },
+                                label = { Text("租户姓名") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(ModernCorners.Medium),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = ModernColors.Primary,
+                                    unfocusedBorderColor = ModernColors.Outline,
+                                    focusedLabelColor = ModernColors.Primary
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(ModernSpacing.Medium))
+
+                            OutlinedTextField(
+                                value = rent,
+                                onValueChange = { rent = it },
+                                label = { Text("月租金 (元)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(ModernCorners.Medium),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = ModernColors.Primary,
+                                    unfocusedBorderColor = ModernColors.Outline,
+                                    focusedLabelColor = ModernColors.Primary
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(ModernSpacing.Large))
+                }
+
+                // Save Button Section
+                item {
+                    LiquidGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        backdrop = cardBackdrop,
+                        shape = RoundedCornerShape(ModernCorners.Medium)
+                    ) {
+                        Column(modifier = Modifier.padding(ModernSpacing.Large)) {
+                            LiquidGlassButton(
+                                onClick = {
+                                    val rentValue = rent.toDoubleOrNull()
+                                    if (roomNumber.isNotBlank() && name.isNotBlank() && rentValue != null) {
+                                        val newTenant = Tenant(
+                                            roomNumber = roomNumber,
+                                            name = name,
+                                            rent = rentValue
+                                        )
+                                        viewModel.addTenant(newTenant)
+
+                                        // Dismiss callback
+                                        onDismiss()
+                                        kotlinx.coroutines.MainScope().launch {
+                                            delay(50)
+                                            onDismiss()
+                                        }
+
+                                        // Navigate back
+                                        if (navController.previousBackStackEntry != null) {
+                                            navController.popBackStack()
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "请填写所有字段", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                backdrop = cardBackdrop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Save,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ModernIconSize.Medium),
+                                    tint = ModernColors.Primary
+                                )
+                                Spacer(modifier = Modifier.width(ModernSpacing.Small))
+                                Text(
+                                    "保存租户",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ModernColors.Primary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(ModernSpacing.Large))
+                }
+
+                // Info Section
+                item {
+                    LiquidGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        backdrop = cardBackdrop,
+                        shape = RoundedCornerShape(ModernCorners.Medium)
+                    ) {
+                        Column(modifier = Modifier.padding(ModernSpacing.Medium)) {
+                            Text(
+                                text = "💡 填写说明",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ModernColors.OnSurface
+                            )
+                            Spacer(modifier = Modifier.height(ModernSpacing.Small))
+                            Text(
+                                text = "• 房间号用于唯一标识租户\n• 租户姓名用于生成收据\n• 月租金将自动计入账单",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = ModernColors.OnSurfaceVariant,
+                                lineHeight = ModernTypography.LineHeightMedium
                             )
                         }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(ModernSpacing.Large))
-                
-                // 说明信息 - 现代化设计
-                Surface(
-                    shape = RoundedCornerShape(ModernCorners.Medium),
-                    color = ModernColors.Surface,
-                    shadowElevation = ModernElevation.Level1
-                ) {
-                    Column(modifier = Modifier.padding(ModernSpacing.Medium)) {
-                        Text(
-                            text = "💡 填写说明",
-                            fontSize = ModernTypography.LabelLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = ModernColors.OnSurface
-                        )
-                        Spacer(modifier = Modifier.height(ModernSpacing.Small))
-                        Text(
-                            text = "• 房间号用于唯一标识租户\n• 租户姓名用于生成收据\n• 月租金将自动计入账单",
-                            fontSize = ModernTypography.BodyMedium,
-                            color = ModernColors.OnSurfaceTertiary,
-                            lineHeight = ModernTypography.LineHeightMedium
-                        )
-                    }
-                }
             }
         }
+
+        // Top gradient overlay for smooth status bar transition
+        com.morgen.rentalmanager.ui.components.TopGradientOverlay(
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+
+        // Floating glass TopBar
+        FrostedBlurTopBar(
+            title = "添加租户",
+            backdrop = topBarBackdrop,
+            overlayColor = Color.Transparent,
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            onIconClick = {
+                onDismiss()
+                kotlinx.coroutines.MainScope().launch {
+                    delay(50)
+                    onDismiss()
+                }
+                if (navController.previousBackStackEntry != null) {
+                    navController.popBackStack()
+                }
+            },
+            showMenu = false
+        )
     }
-} 
+}

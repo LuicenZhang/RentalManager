@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import com.morgen.rentalmanager.ui.components.ModernMonthYearPicker
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
+import com.kyant.backdrop.Backdrop
 import com.morgen.rentalmanager.ui.theme.*
 import java.util.Calendar
 
@@ -28,11 +30,10 @@ import java.util.Calendar
 @Composable
 fun MonthSelector(
     selectedMonth: String,
-    onMonthSelected: (String) -> Unit,
+    onClick: () -> Unit,
+    backdrop: Backdrop,
     modifier: Modifier = Modifier
 ) {
-    var showPicker by remember { mutableStateOf(false) }
-    
     // 解析当前选中的年月
     val (currentYear, currentMonth) = remember(selectedMonth) {
         parseMonthString(selectedMonth)
@@ -44,14 +45,11 @@ fun MonthSelector(
     }
     
     // 月份选择器按钮
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(ModernCorners.Medium))
-            .clickable { showPicker = true },
+    LiquidGlassCard(
+        modifier = modifier.fillMaxWidth(),
+        backdrop = backdrop,
         shape = RoundedCornerShape(ModernCorners.Medium),
-        color = ModernColors.SurfaceContainer,
-        shadowElevation = ModernElevation.Level1
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
@@ -89,19 +87,6 @@ fun MonthSelector(
             )
         }
     }
-    
-    // 月份年份选择器弹窗
-    ModernMonthYearPicker(
-        show = showPicker,
-        initialYear = currentYear,
-        initialMonth = currentMonth,
-        onDismiss = { showPicker = false },
-        onConfirm = { year, month ->
-            val monthString = formatMonthString(year, month)
-            onMonthSelected(monthString)
-            showPicker = false
-        }
-    )
 }
 
 /**

@@ -11,7 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.morgen.rentalmanager.ui.components.ElevatedCard
+import androidx.compose.ui.unit.dp
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
+import com.kyant.backdrop.Backdrop
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.morgen.rentalmanager.ui.theme.*
 
 /**
@@ -27,6 +30,7 @@ import com.morgen.rentalmanager.ui.theme.*
 fun BillListContent(
     bills: List<BillItem>,
     selectedMonth: String,
+    backdrop: Backdrop,
     onBillClick: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -44,6 +48,7 @@ fun BillListContent(
         // 空状态处理
         EmptyBillListState(
             selectedMonth = selectedMonth,
+            backdrop = backdrop,
             modifier = modifier
         )
     } else {
@@ -56,6 +61,7 @@ fun BillListContent(
             validBills.forEach { bill ->
                 BillItemCard(
                     billItem = bill,
+                    backdrop = backdrop,
                     onClick = { 
                         try {
                             onBillClick(bill.roomNumber, selectedMonth)
@@ -80,6 +86,7 @@ fun BillListContent(
 @Composable
 fun BillItemCard(
     billItem: BillItem,
+    backdrop: Backdrop,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -93,8 +100,10 @@ fun BillItemCard(
         }
     }
     
-    ElevatedCard(
+    LiquidGlassCard(
         modifier = modifier.fillMaxWidth(),
+        backdrop = backdrop,
+        shape = RoundedCornerShape(ModernCorners.Medium),
         onClick = onClick
     ) {
         Column(
@@ -313,39 +322,46 @@ private fun BillDetailRow(
 @Composable
 private fun EmptyBillListState(
     selectedMonth: String,
+    backdrop: Backdrop,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(ModernSpacing.Large),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    LiquidGlassCard(
+        modifier = modifier.fillMaxWidth(),
+        backdrop = backdrop,
+        shape = RoundedCornerShape(ModernCorners.Medium)
     ) {
-        Icon(
-            imageVector = Icons.Default.Receipt,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = ModernColors.OnSurfaceVariant.copy(alpha = 0.6f)
-        )
-        
-        Spacer(modifier = Modifier.height(ModernSpacing.Medium))
-        
-        Text(
-            text = "${selectedMonth}月暂无账单数据",
-            style = MaterialTheme.typography.titleMedium,
-            color = ModernColors.OnSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(ModernSpacing.Small))
-        
-        Text(
-            text = "当前月份还没有生成账单\n请先添加租户信息和费用数据",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ModernColors.OnSurfaceVariant.copy(alpha = 0.8f),
-            textAlign = TextAlign.Center
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(ModernSpacing.Large),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Receipt,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = ModernColors.OnSurfaceVariant.copy(alpha = 0.6f)
+            )
+            
+            Spacer(modifier = Modifier.height(ModernSpacing.Medium))
+            
+            Text(
+                text = "${selectedMonth}月暂无账单数据",
+                style = MaterialTheme.typography.titleMedium,
+                color = ModernColors.OnSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(ModernSpacing.Small))
+            
+            Text(
+                text = "当前月份还没有生成账单\n请先添加租户信息和费用数据",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ModernColors.OnSurfaceVariant.copy(alpha = 0.8f),
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 /**

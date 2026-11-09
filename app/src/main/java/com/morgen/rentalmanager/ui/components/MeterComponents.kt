@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import com.morgen.rentalmanager.ui.addbillall.ExtraFee
+import androidx.compose.ui.unit.dp
 import com.morgen.rentalmanager.ui.addbillall.MeterInput
 import com.morgen.rentalmanager.ui.theme.*
 
@@ -351,52 +352,74 @@ fun ExtraFeeInputItem(
         color = ModernColors.SurfaceVariant,
         tonalElevation = ModernElevation.Level1
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ModernSpacing.Small),
+        Column(
             modifier = Modifier.padding(ModernSpacing.Medium)
         ) {
+            // 顶部标题栏，包含费用名称标签和删除按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "附加费用项",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = ModernColors.OnSurfaceVariant
+                )
+                
+                IconButton(
+                    onClick = onRemove,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "删除费用项",
+                        tint = ModernColors.Error
+                    )
+                }
+            }
+            
+            // 输入框区域
+            Spacer(modifier = Modifier.height(ModernSpacing.Small))
+            
+            // 费用名称输入框 - 单独占一行
             OutlinedTextField(
                 value = fee.name,
                 onValueChange = onNameChange,
                 label = { Text("费用名称") },
-                modifier = Modifier.weight(1.2f), // 给费用名称稍微多一点空间
+                modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = ModernColors.Primary,
                     unfocusedBorderColor = ModernColors.Outline,
                     focusedLabelColor = ModernColors.Primary,
                     unfocusedLabelColor = ModernColors.OnSurfaceVariant,
-                    focusedContainerColor = ModernColors.Surface, // 修复：设置容器背景色，自动适配深色模式
-                    unfocusedContainerColor = ModernColors.Surface // 修复：设置容器背景色，自动适配深色模式
+                    focusedContainerColor = ModernColors.Surface,
+                    unfocusedContainerColor = ModernColors.Surface
                 ),
                 shape = RoundedCornerShape(ModernCorners.Small)
             )
             
+            Spacer(modifier = Modifier.height(ModernSpacing.Medium))
+            
+            // 金额输入框 - 单独占一行
             OutlinedTextField(
                 value = fee.amount,
                 onValueChange = onAmountChange,
                 label = { Text("金额") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1.0f), // 保持金额字段有足够空间显示数字
+                modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Text("¥", color = ModernColors.OnSurfaceVariant) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = ModernColors.Primary,
                     unfocusedBorderColor = ModernColors.Outline,
                     focusedLabelColor = ModernColors.Primary,
                     unfocusedLabelColor = ModernColors.OnSurfaceVariant,
-                    focusedContainerColor = ModernColors.Surface, // 修复：设置容器背景色，自动适配深色模式
-                    unfocusedContainerColor = ModernColors.Surface // 修复：设置容器背景色，自动适配深色模式
+                    focusedContainerColor = ModernColors.Surface,
+                    unfocusedContainerColor = ModernColors.Surface
                 ),
                 shape = RoundedCornerShape(ModernCorners.Small)
             )
-            
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Remove Fee",
-                    tint = ModernColors.Error
-                )
-            }
         }
     }
 }

@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,8 +81,9 @@ object ModernColors {
 
 /**
  * 扩展函数：获取颜色的亮度值
+ * 公开此函数以便在其他文件中使用
  */
-private fun Color.luminance(): Float {
+fun Color.luminance(): Float {
     val r = if (red <= 0.03928f) red / 12.92f else ((red + 0.055f) / 1.055f).pow(2.4f)
     val g = if (green <= 0.03928f) green / 12.92f else ((green + 0.055f) / 1.055f).pow(2.4f)
     val b = if (blue <= 0.03928f) blue / 12.92f else ((blue + 0.055f) / 1.055f).pow(2.4f)
@@ -231,4 +234,58 @@ object ModernTypography {
     val LineHeightMedium = 20.sp
     val LineHeightSmall = 16.sp
     val LineHeightCompact = 14.sp
+}
+
+/**
+ * 渐变色系统
+ */
+object ModernGradients {
+    val BlueOcean = Brush.linearGradient(
+        colors = listOf(Color(0xFF4facfe), Color(0xFF00f2fe))
+    )
+    
+    val WarmSun = Brush.linearGradient(
+        colors = listOf(Color(0xFFfa709a), Color(0xFFfee140))
+    )
+    
+    val NightSky = Brush.linearGradient(
+        colors = listOf(Color(0xFF30cfd0), Color(0xFF330867))
+    )
+    
+    val LushGreen = Brush.linearGradient(
+        colors = listOf(Color(0xFF0ba360), Color(0xFF3cba92))
+    )
+    
+    // 适用于卡片的微妙渐变
+    val CardBlue = Brush.linearGradient(
+        colors = listOf(Color(0xFFE3F2FD), Color(0xFFFFFFFF)),
+        start = Offset(0f, 0f),
+        end = Offset(0f, Float.POSITIVE_INFINITY)
+    )
+    
+    // 深色模式下的卡片渐变
+    val CardDark = Brush.linearGradient(
+        colors = listOf(Color(0xFF2C2C2C), Color(0xFF1E1E1E)),
+        start = Offset(0f, 0f),
+        end = Offset(0f, Float.POSITIVE_INFINITY)
+    )
+}
+
+/**
+ * 毛玻璃效果系统
+ */
+object ModernGlass {
+    // 模糊程度
+    val BlurSmall = 10.dp
+    val BlurMedium = 20.dp
+    val BlurLarge = 30.dp
+    
+    // 透明度
+    const val AlphaLow = 0.1f
+    const val AlphaMedium = 0.3f
+    const val AlphaHigh = 0.7f
+    
+    // 混合模式颜色
+    val GlassLight = Color.White.copy(alpha = 0.7f)
+    val GlassDark = Color.Black.copy(alpha = 0.7f)
 }

@@ -18,6 +18,26 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.morgen.rentalmanager.myapplication.TenantRepository
 import com.morgen.rentalmanager.ui.theme.*
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.morgen.rentalmanager.ui.components.FrostedBlurTopBar
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
+import com.morgen.rentalmanager.ui.components.ModernMonthYearPicker
+import com.kyant.backdrop.Backdrop
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+
 
 /**
  * 账单列表主界面组件
@@ -48,43 +68,46 @@ fun BillListScreen(
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     
+    // Create Backdrops
+    val cardBackdrop = rememberLayerBackdrop()
+
     // 主界面内容
-    BillListScreenContent(
-        uiState = uiState,
-        selectedMonth = selectedMonth,
-        isRefreshing = isRefreshing,
-        onMonthSelected = viewModel::selectMonth,
-        onRefresh = viewModel::refreshData,
-        onRetry = viewModel::retryLoadData,
-        onBillClick = { roomNumber, month ->
-            // 导航到账单详情页面，添加完善的错误处理
-            try {
-                // 验证参数
-                if (roomNumber.isBlank() || month.isBlank()) {
-                    android.util.Log.w("BillListScreen", "导航参数无效: roomNumber=$roomNumber, month=$month")
-                    return@BillListScreenContent
-                }
-                
-                // URL编码处理特殊字符
-                val encodedRoomNumber = java.net.URLEncoder.encode(roomNumber, "UTF-8")
-                val encodedMonth = java.net.URLEncoder.encode(month, "UTF-8")
-                
-                navController.navigate("bill_detail/$encodedRoomNumber/$encodedMonth")
-            } catch (e: Exception) {
-                android.util.Log.e("BillListScreen", "导航失败", e)
-                // 这里可以添加Toast提示用户导航失败
-                // 目前记录日志，避免崩溃
-            }
-        },
-        navController = navController,
-        modifier = modifier
-    )
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+
+        
+        // Content layer
+        // Content layer
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            BillListScreenContent(
+                uiState = uiState,
+                selectedMonth = selectedMonth,
+                isRefreshing = isRefreshing,
+                onMonthSelected = viewModel::selectMonth,
+                onRefresh = viewModel::refreshData,
+                onRetry = viewModel::retryLoadData,
+                onBillClick = { roomNumber, month ->
+                    // 导航到账单详情页面
+                    try {
+                        if (roomNumber.isBlank() || month.isBlank()) return@BillListScreenContent
+                        val encodedRoomNumber = java.net.URLEncoder.encode(roomNumber, "UTF-8")
+                        val encodedMonth = java.net.URLEncoder.encode(month, "UTF-8")
+                        navController.navigate("bill_detail/$encodedRoomNumber/$encodedMonth")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                },
+                cardBackdrop = cardBackdrop,
+                navController = navController
+            )
+        }
+    }
 }
 
-/**
- * 账单列表界面内容组件
- * 根据UI状态显示不同的界面内容
- */
 @Composable
 private fun BillListScreenContent(
     uiState: BillListUiState,
@@ -94,53 +117,181 @@ private fun BillListScreenContent(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onBillClick: (String, String) -> Unit,
+    cardBackdrop: LayerBackdrop,
     navController: NavController,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    val topBarBackdrop = rememberLayerBackdrop()
+    val density = LocalDensity.current
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    
+    // Collapsing state
+    val topBarHeight = 64.dp
+    val topBarHeightPx = with(density) { topBarHeight.toPx() }
+    var collapseOffsetPx by remember { mutableFloatStateOf(0f) }
+    
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                // Determine new offset:
+                // If delta < 0 (scrolling down), we increase collapseOffset (hide bar)
+                // If delta > 0 (scrolling up), we decrease collapseOffset (show bar)
+                val newOffset = (collapseOffsetPx - delta).coerceIn(0f, topBarHeightPx)
+                
+                // We consume the delta only if we are moving the bar?
+                // For Quick Return, valid pattern is to consume none and let list scroll too, OR consume.
+                // If we consume, list stops.
+                // Let's NOT consume, so list scrolls simultaneously with bar hiding.
+                collapseOffsetPx = newOffset
+                return Offset.Zero 
+            }
+        }
+    }
+    
+    val collapseFraction = if (topBarHeightPx > 0) collapseOffsetPx / topBarHeightPx else 0f
+    
+    // Dynamic positions
+    val topBarOffsetY = -topBarHeight * collapseFraction
+    val topBarAlpha = 1f - collapseFraction
+    
+    // MonthSelector moves up as TopBar collapses
+    // Initial top: statusBar + topBarHeight
+    // Final top: statusBar
+    // Just place it below the (moving) top bar, but clamped to statusBar
+    val monthSelectorTopOffset = (statusBarHeight + topBarHeight - (topBarHeight * collapseFraction)).coerceAtLeast(statusBarHeight + 8.dp)
+
+    // Content padding: Space for Headers (TopBar + MonthSelector)
+    // Initial occupied height: statusBar + topBarHeight + MonthSelectorHeight(~80dp including padding)
+    val contentPaddingTop = statusBarHeight + topBarHeight + 80.dp + ModernSpacing.Medium
+
+    // State for Month Picker
+    var showMonthPicker by remember { mutableStateOf(false) }
+
+    // Helper for parsing current month (simple version)
+    val (currentYear, currentMonth) = remember(selectedMonth) {
+        try {
+            if (selectedMonth.contains("-")) {
+                val parts = selectedMonth.split("-")
+                (parts[0].toInt() to parts[1].toInt())
+            } else {
+                val cal = java.util.Calendar.getInstance()
+                (cal.get(java.util.Calendar.YEAR) to cal.get(java.util.Calendar.MONTH) + 1)
+            }
+        } catch (e: Exception) {
+            val cal = java.util.Calendar.getInstance()
+            (cal.get(java.util.Calendar.YEAR) to cal.get(java.util.Calendar.MONTH) + 1)
+        }
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ModernColors.Background) // 添加纯色背景，防止透出主页内容
+            .nestedScroll(nestedScrollConnection)
     ) {
-        // 顶部栏
-        BillListTopBar(
-            selectedMonth = selectedMonth,
-            isRefreshing = isRefreshing,
-            onMonthSelected = onMonthSelected,
-            onRefresh = onRefresh,
-            navController = navController
+        // 主要内容区域
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(topBarBackdrop)
+        ) {
+            // Background layer moved here to be captured by topBarBackdrop
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .layerBackdrop(cardBackdrop)
+                    .background(ModernColors.Background)
+            )
+
+            when (uiState) {
+                is BillListUiState.Loading -> {
+                    LoadingContent(modifier = Modifier.fillMaxSize())
+                }
+                is BillListUiState.Success -> {
+                    SuccessContent(
+                        uiState = uiState,
+                        onBillClick = onBillClick,
+                        cardBackdrop = cardBackdrop,
+                        selectedMonth = selectedMonth,
+                        onMonthSelected = onMonthSelected,
+                        topPadding = contentPaddingTop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                is BillListUiState.Error -> {
+                    ErrorContent(
+                        error = uiState,
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize().padding(top = contentPaddingTop)
+                    )
+                }
+                is BillListUiState.Empty -> {
+                    EmptyContent(
+                        emptyState = uiState,
+                        modifier = Modifier.fillMaxSize().padding(top = contentPaddingTop)
+                    )
+                }
+            }
+        }
+        
+        // Top gradient overlay for smooth status bar transition
+        com.morgen.rentalmanager.ui.components.TopGradientOverlay(
+            modifier = Modifier.align(Alignment.TopCenter)
         )
         
-        // 主要内容区域
-        when (uiState) {
-            is BillListUiState.Loading -> {
-                LoadingContent(
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            
-            is BillListUiState.Success -> {
-                SuccessContent(
-                    uiState = uiState,
-                    onBillClick = onBillClick,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            
-            is BillListUiState.Error -> {
-                ErrorContent(
-                    error = uiState,
-                    onRetry = onRetry,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            
-            is BillListUiState.Empty -> {
-                EmptyContent(
-                    emptyState = uiState,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+        // 顶部栏 (Collapsible)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset { IntOffset(0, topBarOffsetY.roundToPx()) }
+                .graphicsLayer { alpha = topBarAlpha }
+                .zIndex(2f)
+        ) {
+            FrostedBlurTopBar(
+                title = "账单列表",
+                backdrop = topBarBackdrop,
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                onIconClick = { navController.popBackStack() },
+                showMenu = false, // Disable menu
+                menuContent = {},
+                onMenuClick = {}
+            )
+        }
+        
+        // Month Selector Button (Fixed/Sticky)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset { IntOffset(0, monthSelectorTopOffset.roundToPx()) }
+                .padding(horizontal = ModernSpacing.Medium)
+                .fillMaxWidth()
+                .zIndex(1f) // Below TopBar (visually, when overlapping)
+        ) {
+             MonthSelector(
+                 selectedMonth = selectedMonth,
+                 onClick = { showMonthPicker = true },
+                 backdrop = topBarBackdrop
+             )
+        }
+        
+        // Full Screen Month Picker Overlay (High Z-Index to cover TopBar and MonthSelector)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(3f)
+        ) {
+            ModernMonthYearPicker(
+                show = showMonthPicker,
+                initialYear = currentYear,
+                initialMonth = currentMonth,
+                onDismiss = { showMonthPicker = false },
+                onConfirm = { year, month ->
+                    val monthString = "$year-${String.format("%02d", month)}"
+                    onMonthSelected(monthString)
+                    showMonthPicker = false
+                },
+                backdrop = topBarBackdrop
+            )
         }
     }
 }
@@ -149,80 +300,7 @@ private fun BillListScreenContent(
  * 顶部栏组件
  * 包含标题、月份选择器和刷新按钮
  */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun BillListTopBar(
-    selectedMonth: String,
-    isRefreshing: Boolean,
-    onMonthSelected: (String) -> Unit,
-    onRefresh: () -> Unit,
-    navController: NavController,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = ModernColors.Surface,
-        shadowElevation = ModernElevation.Level1
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // 顶部栏
-            TopAppBar(
-                title = {
-                Text(
-                        "账单列表",
-                        fontWeight = FontWeight.Medium,
-                    color = ModernColors.OnSurface
-                )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = ModernColors.OnSurface
-                        )
-                    }
-                },
-                actions = {
-                IconButton(
-                    onClick = onRefresh,
-                    enabled = !isRefreshing
-                ) {
-                    if (isRefreshing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(ModernIconSize.Medium),
-                            strokeWidth = 2.dp,
-                            color = ModernColors.Primary
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "刷新数据",
-                            tint = ModernColors.OnSurfaceVariant
-                        )
-                    }
-                }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ModernColors.Surface
-                )
-            )
-            
-            // 月份选择器 - 与顶部栏融为一体
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ModernSpacing.Medium)
-                    .padding(bottom = ModernSpacing.Medium)
-            ) {
-            MonthSelector(
-                selectedMonth = selectedMonth,
-                onMonthSelected = onMonthSelected
-            )
-            }
-        }
-    }
-}
+// Removed BillListTopBar as it is replaced by FrostedBlurTopBar and in-content MonthSelector
 
 /**
  * 加载状态内容
@@ -264,18 +342,33 @@ private fun LoadingContent(
 private fun SuccessContent(
     uiState: BillListUiState.Success,
     onBillClick: (String, String) -> Unit,
+    cardBackdrop: Backdrop,
+    selectedMonth: String,
+    onMonthSelected: (String) -> Unit,
+    topPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     // 使用LazyColumn统一管理所有内容，避免嵌套滚动
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(ModernSpacing.Medium),
+        contentPadding = PaddingValues(
+            top = topPadding,
+            bottom = ModernSpacing.Medium,
+            start = ModernSpacing.Medium,
+            end = ModernSpacing.Medium
+        ),
         verticalArrangement = Arrangement.spacedBy(ModernSpacing.Medium)
     ) {
+        // Month Selector moved to BillListScreenContent overlay
+        // item {
+        //     MonthSelector(...)
+        // }
+
         // 账单汇总卡片
         item {
             BillSummaryCard(
-                summary = uiState.summary
+                summary = uiState.summary,
+                backdrop = cardBackdrop
             )
         }
         
@@ -283,7 +376,8 @@ private fun SuccessContent(
         if (uiState.hasChartData()) {
             item {
                 BillChartCard(
-                    chartData = uiState.chartData
+                    chartData = uiState.chartData,
+                    backdrop = cardBackdrop
                 )
             }
         }
@@ -320,6 +414,7 @@ private fun SuccessContent(
             ) { bill ->
                 BillItemCard(
                     billItem = bill,
+                    backdrop = cardBackdrop,
                     onClick = { 
                         try {
                             onBillClick(bill.roomNumber, uiState.selectedMonth)
@@ -332,11 +427,10 @@ private fun SuccessContent(
         } else {
             // 如果有汇总数据但没有账单列表，显示提示
             item {
-                Card(
+                LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = ModernColors.SurfaceContainer
-                    )
+                    backdrop = cardBackdrop,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(ModernCorners.Medium)
                 ) {
                     Column(
                         modifier = Modifier

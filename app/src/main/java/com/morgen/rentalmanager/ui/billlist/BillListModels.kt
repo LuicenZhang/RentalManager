@@ -11,7 +11,10 @@ data class BillSummary(
     val totalRent: Double = 0.0,
     val totalWater: Double = 0.0,
     val totalElectricity: Double = 0.0,
-    val totalAmount: Double = 0.0
+    val totalAmount: Double = 0.0,
+    val totalBills: Int = 0,
+    val unpaidAmount: Double = 0.0,
+    val paidAmount: Double = 0.0
 ) {
     /**
      * 验证汇总数据的有效性
@@ -53,6 +56,16 @@ data class BillSummary(
      * 获取格式化的总金额
      */
     fun getFormattedTotalAmount(): String = formatAmount(totalAmount)
+
+    /**
+     * 获取格式化的已收金额
+     */
+    fun getFormattedPaidAmount(): String = formatAmount(paidAmount)
+
+    /**
+     * 获取格式化的未收金额
+     */
+    fun getFormattedUnpaidAmount(): String = formatAmount(unpaidAmount)
 }
 
 /**

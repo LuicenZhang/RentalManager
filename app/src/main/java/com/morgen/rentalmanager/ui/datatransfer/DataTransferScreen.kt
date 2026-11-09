@@ -9,8 +9,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -28,9 +30,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp // Added for sp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.morgen.rentalmanager.ui.components.FrostedBlurTopBar
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
+import com.morgen.rentalmanager.ui.components.LiquidGlassButton
 import com.morgen.rentalmanager.ui.theme.ModernColors
 import com.morgen.rentalmanager.ui.theme.ModernElevation
 import com.morgen.rentalmanager.ui.theme.ModernSpacing
@@ -63,11 +71,13 @@ fun DataTransferScreen(
     var shouldNavigateBack by remember { mutableStateOf(false) }
     var backupFilePath by remember { mutableStateOf("") }
     
-    // 获取根据当前主题的界面背景色
-    val backgroundColor = if (isSystemInDarkTheme()) Color(0xFF121212) else Color.White
+    // Backdrop for glass effects
+    val topBarBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
+    val cardBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
     
-    // 获取根据当前主题的卡片背景色
-    val cardBackgroundColor = if (isSystemInDarkTheme()) Color(0xFF1A1A1A) else Color.White
+    // Calculate padding for content
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val topContentPadding = statusBarHeight + 80.dp // Space for floating capsule top bar
     
     // Document picker for import
     val importLauncher = rememberLauncherForActivityResult(
@@ -136,297 +146,296 @@ fun DataTransferScreen(
             }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "备份与恢复",
-                        fontWeight = FontWeight.Medium,
-                        color = ModernColors.OnSurface
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = ModernColors.OnSurface
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backgroundColor
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Content layer wrapped in layerBackdrop so TopBar can blur it
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(backgroundColor)
-                .padding(paddingValues)
-                .padding(horizontal = ModernSpacing.Medium),
-            verticalArrangement = Arrangement.spacedBy(ModernSpacing.Large)
+                .layerBackdrop(topBarBackdrop)
         ) {
-            // 主功能卡片
-            Surface(
+            // Background layer captured by cardBackdrop
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                    shape = RoundedCornerShape(ModernCorners.Large),
-                    color = cardBackgroundColor,
-                    shadowElevation = ModernElevation.Level2
+                    .fillMaxSize()
+                    .layerBackdrop(cardBackdrop)
+                    .background(ModernColors.Background)
+            )
+            
+            // Scrollable content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = topContentPadding, start = ModernSpacing.Medium, end = ModernSpacing.Medium, bottom = ModernSpacing.Medium),
+                verticalArrangement = Arrangement.spacedBy(ModernSpacing.Large)
+            ) {
+                // 主功能卡片 - Manual Backup
+                LiquidGlassCard(
+                    backdrop = cardBackdrop,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                        .padding(ModernSpacing.Large),
-                    verticalArrangement = Arrangement.spacedBy(ModernSpacing.Large)
+                            .padding(ModernSpacing.Large),
+                        verticalArrangement = Arrangement.spacedBy(ModernSpacing.Large)
                     ) {
-                    // 标题
+                        // 标题
                         Text(
-                        text = "手动备份与恢复",
-                        style = MaterialTheme.typography.titleMedium,
+                            text = "手动备份与恢复",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = ModernColors.OnSurface
                         )
                         
-                    // 备份功能
-                    Row(
+                        // 备份功能按钮
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(ModernSpacing.Medium)
+                        ) {
+                            // 备份按钮
+                            LiquidGlassButton(
+                                onClick = {
+                                    val dateFormat = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+                                    val date = LocalDateTime.now().format(dateFormat)
+                                    val fileName = "租房管家备份_$date.json"
+                                    exportLauncher.launch(fileName)
+                                },
+                                backdrop = cardBackdrop,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                enabled = !isExporting && !isImporting
+                            ) {
+                                Icon(
+                                    Icons.Default.FileUpload,
+                                    contentDescription = null,
+                                    tint = ModernColors.Primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "备份数据",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = ModernColors.Primary
+                                )
+                            }
+
+                            // 恢复按钮
+                            com.morgen.rentalmanager.ui.components.LiquidGlassButton(
+                                onClick = { importLauncher.launch("application/json") },
+                                backdrop = cardBackdrop,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                enabled = !isExporting && !isImporting
+                            ) {
+                                Icon(
+                                    Icons.Default.Download,
+                                    contentDescription = null,
+                                    tint = ModernColors.Primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "恢复数据",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = ModernColors.Primary
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // 自动备份管理卡片
+                com.morgen.rentalmanager.ui.components.LiquidGlassCard(
+                    backdrop = cardBackdrop,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(64.dp)  // 增加高度
-                            .padding(bottom = 8.dp)
+                            .padding(ModernSpacing.Large),
+                        verticalArrangement = Arrangement.spacedBy(ModernSpacing.Medium)
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                // 使用日期作为默认文件名
-                                val dateFormat = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
-                                val date = LocalDateTime.now().format(dateFormat)
-                                val fileName = "租房管家备份_$date.json"
-                                exportLauncher.launch(fileName)
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),  // 固定高度
-                            shape = RoundedCornerShape(ModernCorners.Medium),
-                            border = BorderStroke(1.dp, ModernColors.Primary),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = ModernColors.Primary
-                            ),
-                            enabled = !isExporting && !isImporting
+                        // 标题
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Default.FileUpload,
-                                contentDescription = null,
-                                tint = ModernColors.Primary,
-                                modifier = Modifier.size(20.dp)  // 减小图标
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "备份数据",
-                                fontSize = 13.sp,  // 减小字体大小
-                                fontWeight = FontWeight.Medium
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(
+                                        color = ModernColors.Primary.copy(alpha = 0.1f),
+                                        shape = RoundedCornerShape(ModernCorners.Medium)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Backup,
+                                    contentDescription = null,
+                                    tint = ModernColors.Primary,
+                                    modifier = Modifier.size(ModernIconSize.Large)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.width(ModernSpacing.Medium))
+                            
+                            Column {
+                                Text(
+                                    text = "自动备份管理",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ModernColors.OnSurface
+                                )
+                                Text(
+                                    text = "查看和使用自动备份文件",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ModernColors.OnSurfaceVariant
+                                )
+                            }
                         }
-
-                        Spacer(modifier = Modifier.width(ModernSpacing.Medium))
-
-                        Button(
-                            onClick = { importLauncher.launch("application/json") },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),  // 固定高度
+                        
+                        HorizontalDivider(
+                            color = ModernColors.OutlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(vertical = ModernSpacing.Small)
+                        )
+                        
+                        // 自动备份路径
+                        val activity = context as? android.app.Activity
+                        val backupDir = if (activity != null) {
+                            com.morgen.rentalmanager.utils.BackupFileHelper.getBackupDirectory(activity)
+                        } else {
+                            "文档/租房管家备份"
+                        }
+                        
+                        // 备份路径信息
+                        Surface(
                             shape = RoundedCornerShape(ModernCorners.Medium),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = ModernColors.Primary
-                            ),
+                            color = ModernColors.SurfaceVariant.copy(alpha = 0.3f),
+                            modifier = Modifier.padding(vertical = ModernSpacing.Small)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(ModernSpacing.Medium),
+                                verticalArrangement = Arrangement.spacedBy(ModernSpacing.Small)
+                            ) {
+                                Text(
+                                    text = "备份文件位置:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = ModernColors.OnSurface
+                                )
+                                
+                                Text(
+                                    text = "$backupDir/租房管家自动备份.json",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = ModernColors.OnSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        // 信息提示
+                        Surface(
+                            shape = RoundedCornerShape(ModernCorners.Medium),
+                            color = ModernColors.Primary.copy(alpha = 0.1f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(ModernSpacing.Medium),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = ModernColors.Primary,
+                                    modifier = Modifier.size(ModernIconSize.Small)
+                                )
+                                Spacer(modifier = Modifier.width(ModernSpacing.Small))
+                                Text(
+                                    text = "每次保存账单时，应用会自动创建备份文件",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ModernColors.Primary
+                                )
+                            }
+                        }
+                        
+                        // 恢复自动备份按钮
+                        com.morgen.rentalmanager.ui.components.LiquidGlassButton(
+                            onClick = {
+                                viewModel.importAutoBackup(context)
+                                isImporting = true
+                                Toast.makeText(context, "正在从自动备份恢复数据...", Toast.LENGTH_SHORT).show()
+                            },
+                            backdrop = cardBackdrop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
                             enabled = !isExporting && !isImporting
                         ) {
                             Icon(
                                 Icons.Default.Download,
                                 contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)  // 减小图标
+                                tint = ModernColors.Primary,
+                                modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "恢复数据",
-                                fontSize = 13.sp,  // 减小字体大小
+                                "从自动备份恢复数据",
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // 自动备份管理卡片
-                Surface(
-                    modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                    shape = RoundedCornerShape(ModernCorners.Large),
-                    color = cardBackgroundColor,
-                    shadowElevation = ModernElevation.Level2
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                        .padding(ModernSpacing.Large),
-                        verticalArrangement = Arrangement.spacedBy(ModernSpacing.Medium)
-                    ) {
-                    // 标题
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(
-                                    color = ModernColors.Primary.copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(ModernCorners.Medium)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Backup,
-                                contentDescription = null,
-                                tint = ModernColors.Primary,
-                                modifier = Modifier.size(ModernIconSize.Large)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.width(ModernSpacing.Medium))
-                        
-                        Column {
-                        Text(
-                                text = "自动备份管理",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = ModernColors.OnSurface
-                        )
-                            Text(
-                                text = "查看和使用自动备份文件",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = ModernColors.OnSurfaceVariant
-                            )
-                        }
-                    }
-                    
-                    HorizontalDivider(
-                        color = ModernColors.OutlineVariant,
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = ModernSpacing.Small)
-                    )
-                    
-                    // 自动备份路径
-                    val activity = context as? android.app.Activity
-                    val backupDir = if (activity != null) {
-                        com.morgen.rentalmanager.utils.BackupFileHelper.getBackupDirectory(activity)
-                    } else {
-                        "文档/租房管家备份"
-                    }
-                    
-                    // 备份路径信息
-                    Surface(
-                        shape = RoundedCornerShape(ModernCorners.Medium),
-                        color = ModernColors.SurfaceVariant.copy(alpha = 0.5f),
-                        border = BorderStroke(1.dp, ModernColors.Outline.copy(alpha = 0.3f)),
-                        modifier = Modifier.padding(vertical = ModernSpacing.Small)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(ModernSpacing.Medium),
-                            verticalArrangement = Arrangement.spacedBy(ModernSpacing.Small)
-                        ) {
-                            Text(
-                                text = "备份文件位置:",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = ModernColors.OnSurface
-                            )
-                            
-                            Text(
-                                text = "$backupDir/租房管家自动备份.json",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = ModernColors.OnSurfaceVariant
-                            )
-                        }
-                    }
-                    
-                    // 信息提示
-                    Surface(
-                            shape = RoundedCornerShape(ModernCorners.Medium),
-                        color = ModernColors.Primary.copy(alpha = 0.1f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(ModernSpacing.Medium),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = ModernColors.Primary,
-                                modifier = Modifier.size(ModernIconSize.Small)
-                            )
-                            Spacer(modifier = Modifier.width(ModernSpacing.Small))
-                            Text(
-                                text = "每次保存账单时，应用会自动创建备份文件",
-                                style = MaterialTheme.typography.bodySmall,
                                 color = ModernColors.Primary
                             )
                         }
                     }
-                    
-                    // 恢复自动备份按钮
-                    Button(
-                        onClick = {
-                            // 恢复自动备份文件
-                            viewModel.importAutoBackup(context)
-                            isImporting = true
-                            Toast.makeText(context, "正在从自动备份恢复数据...", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),  // 与前面按钮保持一致的高度
-                        shape = RoundedCornerShape(ModernCorners.Medium),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ModernColors.Primary
-                        ),
-                        enabled = !isExporting && !isImporting
+                }
+                
+                // 操作提示信息
+                if (isExporting || isImporting) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(ModernSpacing.Small)
                     ) {
-                        Icon(
-                            Icons.Default.Download,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)  // 减小图标大小
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))  // 固定间距
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         Text(
-                            "从自动备份恢复数据",
-                            fontSize = 16.sp,  // 减小字体大小
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White
+                            text = if (isExporting) "备份中，请稍候..." else "恢复中，请稍候...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ModernColors.OnSurfaceVariant
                         )
                     }
                 }
+                
+                // Bottom padding for navigation bar
+                Spacer(modifier = Modifier.height(80.dp))
             }
-            
-            // 操作提示信息
-            if (isExporting || isImporting) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                Text(
-                    text = if (isExporting) "备份中，请稍候..." else "恢复中，请稍候...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ModernColors.OnSurfaceVariant,
-                    modifier = Modifier.padding(top = ModernSpacing.Small)
-                            )
-                        }
-                    }
+        }
+        
+        // Top gradient overlay for smooth status bar transition
+        com.morgen.rentalmanager.ui.components.TopGradientOverlay(
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+        
+        // 玻璃顶栏 - Floating above content
+        com.morgen.rentalmanager.ui.components.FrostedBlurTopBar(
+            title = "备份与恢复",
+            backdrop = topBarBackdrop,
+            overlayColor = Color.Transparent,
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            onIconClick = {
+                try {
+                    navController.popBackStack()
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
+            },
+            showMenu = false
+        )
+    }
     
     // 结果对话框
     if (showResultDialog) {

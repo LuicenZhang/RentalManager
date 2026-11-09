@@ -1,26 +1,32 @@
 package com.morgen.rentalmanager.ui.components
 
+import android.os.Build
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.Alignment
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.morgen.rentalmanager.ui.theme.ModernAnimations
 import com.morgen.rentalmanager.ui.theme.ModernColors
 import com.morgen.rentalmanager.ui.theme.ModernCorners
@@ -30,7 +36,7 @@ import kotlinx.coroutines.delay
 private val EaseOutQuart = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
 /**
- * 手机应用风格的启动按钮
+ * 手机应用风格的启动按钮 - 玻璃效果版本
  * 点击时会执行放大→淡出→导航的动画序列
  */
 @Composable
@@ -41,29 +47,49 @@ fun AppLaunchButton(
     icon: ImageVector,
     text: String,
     modifier: Modifier = Modifier,
+    backdrop: Backdrop? = null, // 添加 backdrop 参数
     containerColor: Color = ModernColors.Primary,
     contentColor: Color = Color.White,
     onLaunchStateChange: ((Boolean) -> Unit)? = null,
-    onRouteNavigate: (() -> Boolean)? = null // 返回true表示执行默认导航，返回false表示由调用者处理导航
+    onRouteNavigate: (() -> Boolean)? = null
 ) {
     var isLaunching by remember { mutableStateOf(false) }
     var buttonVisible by remember { mutableStateOf(true) }
     var isPressed by remember { mutableStateOf(false) }
     
+    val isLightTheme = !isSystemInDarkTheme()
+    val isBlurSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    
+    // 玻璃效果背景色
+    val glassContainerColor = if (isLightTheme) {
+        Color(0xFFFAFAFA).copy(alpha = 0.6f)
+    } else {
+        Color(0xFF1E1E1E).copy(alpha = 0.6f)
+    }
+    
+    val fallbackBackground = if (isLightTheme) {
+        Color(0xFFFAFAFA).copy(alpha = 0.85f)
+    } else {
+        Color(0xFF2A2A2A).copy(alpha = 0.85f)
+    }
+    
+    val glassBorder = if (isLightTheme) {
+        Color.White.copy(alpha = 0.5f)
+    } else {
+        Color.White.copy(alpha = 0.2f)
+    }
+    
     // 点击反馈动画
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = tween(
-            durationMillis = 150,
-            easing = ModernAnimations.UltraSmoothOut
-        ),
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
         label = "button_scale"
     )
     
     // 按钮透明度动画
     val buttonAlpha by animateFloatAsState(
         targetValue = when {
-            isLaunching -> 0f  // 淡出
+            isLaunching -> 0f
             buttonVisible -> 1f
             else -> 0f
         },
@@ -77,27 +103,14 @@ fun AppLaunchButton(
     // 启动动画完成后的处理
     LaunchedEffect(isLaunching) {
         if (isLaunching) {
-            // 通知父组件启动状态变化，开始模糊主界面
             onLaunchStateChange?.invoke(true)
-            
-            // 立即执行路由导航回调
             val shouldUseDefaultNavigation = onRouteNavigate?.invoke() ?: true
-            
-            // 等待按钮动画完成
             delay(200)
-            
-            // 仅在需要默认导航时执行
             if (shouldUseDefaultNavigation) {
                 navController.navigate(route)
             }
-            
-            // 等待页面完全展开
             delay(50)
-            
-            // 重置模糊效果和按钮状态
             onLaunchStateChange?.invoke(false)
-            
-            // 延迟重置按钮状态
             delay(100)
             isLaunching = false
             buttonVisible = true
@@ -115,51 +128,72 @@ fun AppLaunchButton(
     // 组件销毁时确保状态重置
     DisposableEffect(Unit) {
         onDispose {
-            // 确保模糊效果被清除
             onLaunchStateChange?.invoke(false)
         }
     }
     
-    // 使用简洁的按钮样式，参考收据按钮
-    OutlinedButton(
-        onClick = {
-            if (!isLaunching) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(ModernCorners.Large)
+    
+    // 使用玻璃效果的按钮样式
+    Box(
+        modifier = modifier
+            .height(48.dp)
+            .scale(scale)
+            .alpha(buttonAlpha)
+            .then(
+                if (backdrop != null && isBlurSupported) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { shape },
+                        effects = {
+                            vibrancy()
+                            blur(12f.dp.toPx())
+                            lens(20f.dp.toPx(), 20f.dp.toPx())
+                        },
+                        onDrawSurface = { drawRect(glassContainerColor) }
+                    )
+                } else {
+                    Modifier
+                        .clip(shape)
+                        .background(fallbackBackground)
+                        .border(
+                            width = 1.dp,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(glassBorder, glassBorder.copy(alpha = 0.1f))
+                            ),
+                            shape = shape
+                        )
+                }
+            )
+            .interactiveHighlight(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = !isLaunching
+            ) {
                 isPressed = true
                 onClick()
                 isLaunching = true
             }
-        },
-        shape = RoundedCornerShape(ModernCorners.Large),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
-        border = BorderStroke(0.dp, Color.Transparent), // 无边框
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 1.dp,
-            pressedElevation = 0.dp
-        ),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp), // 更大的内边距
-        modifier = modifier
-            .height(48.dp) // 更大的高度
-            .scale(scale)
-            .alpha(buttonAlpha)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
-        // 简洁的内容布局
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(0.dp) // 无额外内边距
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(22.dp) // 更大的图标
+                modifier = Modifier.size(22.dp),
+                tint = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.width(8.dp)) // 更大的间距
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

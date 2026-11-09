@@ -8,11 +8,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
@@ -29,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,6 +49,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.background
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -111,6 +120,15 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.withContext
 import android.view.ViewGroup
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 
 // 在类级别添加预热标志和延迟加载机制
 class MainActivity : ComponentActivity() {
@@ -382,106 +400,63 @@ fun MainScreen(
     val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
     var fabExpanded by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
-    var fabVisible by remember { mutableStateOf(true) } // 默认始终显示FAB
+    val fabVisible = true // 始终显示FAB
     var isLaunching by remember { mutableStateOf(false) }
     
-    // FAB自动隐藏计时器
-    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
-    val autoHideTimeout = 5000L // 5秒后自动隐藏
-    
-    // 更新交互时间
-    fun updateInteractionTime() {
-        lastInteractionTime = System.currentTimeMillis()
-        fabVisible = true
-    }
-    
-    // 监听滚动和交互，更新时间
-    LaunchedEffect(isScrolling) {
-        if (isScrolling) {
-            updateInteractionTime()
-        }
-    }
-    
-    // 自动隐藏FAB的定时检查
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000) // 每秒检查一次
-            val currentTime = System.currentTimeMillis()
-            // 如果FAB展开或正在启动动画，不自动隐藏
-            if (!fabExpanded && !isLaunching && currentTime - lastInteractionTime > autoHideTimeout) {
-                fabVisible = false
-            }
-        }
-    }
-    
-    // 点击屏幕时显示FAB
+    // 点击屏幕时收起菜单（如果展开）
     val clickableModifier = Modifier.clickable(
         interactionSource = remember { MutableInteractionSource() },
         indication = null // 无视觉反馈
     ) {
-        updateInteractionTime()
-    }
-    
-    // 简化FAB可见性控制，减少状态变化
-    LaunchedEffect(tenants.isEmpty()) {
-        // 如果没有租户数据，始终保持按钮可见
-        updateInteractionTime()
+        if (fabExpanded) fabExpanded = false
     }
 
+    // 创建 LayerBackdrop 用于顶栏模糊效果
+    val topBarBackdrop = rememberLayerBackdrop()
+    
+    // 创建独立的卡片 Backdrop（与 TopBar 分开，用于卡片玻璃效果）
+    val cardBackdrop = rememberLayerBackdrop()
+    
+    // 计算 TopBar 需要的顶部空间（状态栏 + TopBar高度 + 间距）
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val topBarTotalHeight = statusBarPadding + 56.dp + 16.dp  // 状态栏 + TopBar高度 + 间距
+    
     // 使用分层UI实现全局模糊效果
     LayeredUI(
-        showBlur = fabExpanded || isLaunching,
+        showBlur = isLaunching, // 仅页面启动时模糊，不再在 fabExpanded 时模糊
         backgroundContent = {
-            // 主界面内容 - 会被模糊
-            Scaffold(
-                topBar = {
-                    FrostedBlurTopBar(
-                        height = 56.dp,
-                        title = "租房管家",
-                        onMenuClick = { menuExpanded = true },
-                        menuExpanded = menuExpanded,
-                        onDismissMenu = { menuExpanded = false },
-                        menuContent = {
-                            val buttons = listOf(
-                                "账单列表" to "bill_list",
-                                "备份与恢复" to "data_transfer",
-                                "设置" to "settings",
-                                "关于" to "about"
-                            )
-                            buttons.forEach { button ->
-                                val (text, route) = button
-                                DropdownMenuItem(
-                                    text = { 
-                                        Text(
-                                            text = text,
-                                            color = MaterialTheme.colorScheme.onSurface, // 使用主题文字色，自动适配深色模式
-                                            fontWeight = FontWeight.Medium // 使文字更加醒目
-                                        ) 
-                                    },
-                                    onClick = {
-                                        navController.navigate(route = route)
-                                        menuExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    )
-                },
-                containerColor = MaterialTheme.colorScheme.background // 使用主题背景色，自动适配深色模式
-            ) { paddingValues ->
-                // 内容区域
+            // 主界面内容 - 使用 Box 叠加布局让 TopBar 浮动
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // 主要内容区域 - 使用 layerBackdrop(topBarBackdrop) 让 TopBar 可以捕获全部内容
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
-                        .then(clickableModifier) // 应用点击监听，显示FAB
+                        .layerBackdrop(topBarBackdrop)
                 ) {
+                    // 背景层 - 嵌套在 topBarBackdrop 内，用于卡片的玻璃效果采样
+                    // 这样 TopBar 模糊时可以完整捕获卡片的玻璃效果
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .layerBackdrop(cardBackdrop)
+                            .background(MaterialTheme.colorScheme.background)
+                    )
+                    
+                    // 内容在 cardBackdrop 之后，但仍在 topBarBackdrop 内
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(clickableModifier) // 应用点击监听，显示FAB
+                    ) {
                     // 租户列表
                     if (tenants.isEmpty()) {
                         // 空状态设计
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .padding(top = topBarTotalHeight)
                                 .padding(ModernSpacing.XXLarge),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
@@ -524,7 +499,7 @@ fun MainScreen(
                                 .padding(horizontal = ModernSpacing.Medium),
                             state = listState,
                             contentPadding = PaddingValues(
-                                top = ModernSpacing.Small,
+                                top = topBarTotalHeight,
                                 bottom = ModernSpacing.XXXLarge
                             ),
                             verticalArrangement = Arrangement.spacedBy(8.dp) // 添加间距，保证卡片分离
@@ -533,10 +508,11 @@ fun MainScreen(
                                 items = tenants,
                                 key = { tenant -> tenant.roomNumber }
                             ) { tenant ->
-                                // 直接使用TenantCard，不添加额外的包装器或修饰符
+                                // 使用 LiquidGlassCard 包装的 TenantCard，传递 cardBackdrop
                                 TenantCard(
                                     tenant = tenant,
                                     navController = navController,
+                                    backdrop = cardBackdrop,
                                     modifier = Modifier // 不添加padding，避免重复间距
                                 )
                             }
@@ -544,171 +520,219 @@ fun MainScreen(
                         
                         // 移除滚动性能监控
                     }
-                }
-            }
-        },
-        foregroundContent = {
-            // 浮动按钮区域 - 不受模糊影响
-            Box(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // 点击外部区域收起菜单的透明覆盖层
-                if (fabExpanded) {
+                    } // Close inner content Box
+                } // Close topBarBackdrop Box
+                
+                // Top gradient overlay for smooth status bar transition
+                com.morgen.rentalmanager.ui.components.TopGradientOverlay(
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+                
+                // 浮动 TopBar - 覆盖在内容上方
+                FrostedBlurTopBar(
+                    backdrop = topBarBackdrop,
+                    height = 56.dp,
+                    title = "租房管家",
+                    onMenuClick = { menuExpanded = true },
+                    menuExpanded = menuExpanded,
+                    onDismissMenu = { menuExpanded = false },
+                    menuContent = {
+                        val buttons = listOf(
+                            "账单列表" to "bill_list",
+                            "备份与恢复" to "data_transfer",
+                            "设置" to "settings",
+                            "关于" to "about"
+                        )
+                        buttons.forEach { button ->
+                            val (text, route) = button
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = text,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Medium
+                                    ) 
+                                },
+                                onClick = {
+                                    navController.navigate(route = route)
+                                    menuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                )
+                
+                // 浮动按钮区域 - 在 backgroundContent 内以使用 cardBackdrop 模糊效果
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // 点击外部区域收起菜单的透明覆盖层
+                    if (fabExpanded) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) {
+                                    fabExpanded = false
+                                }
+                        )
+                    }
+                    
+// 浮动按钮区域
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                fabExpanded = false
-                            }
-                    )
-                }
-                
-                // 浮动按钮区域
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 24.dp, bottom = 48.dp),
-                    contentAlignment = Alignment.BottomStart
-                ) {
-                    AnimatedVisibility(
-                        visible = fabVisible,
-                        enter = scaleIn(transformOrigin = TransformOrigin(0f, 1f)),
-                        exit = scaleOut(transformOrigin = TransformOrigin(0f, 1f))
+                            .padding(start = 24.dp, bottom = 48.dp),
+                        contentAlignment = Alignment.BottomStart
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.Start,
-                            verticalArrangement = Arrangement.Bottom
+                        AnimatedVisibility(
+                            visible = fabVisible,
+                            enter = scaleIn(transformOrigin = TransformOrigin(0f, 1f)),
+                            exit = scaleOut(transformOrigin = TransformOrigin(0f, 1f))
                         ) {
-                            // 添加账单按钮
-                            AnimatedVisibility(
-                                visible = fabExpanded,
-                                enter = slideInVertically(
-                                    animationSpec = tween(durationMillis = 300, delayMillis = 50, easing = ModernAnimations.PerfectSmoothOut),
-                                    initialOffsetY = { it / 2 } // 从中间位置向上飞出
-                                ) + fadeIn(
-                                    animationSpec = tween(durationMillis = 200, delayMillis = 50)
-                                ) + scaleIn(
-                                    animationSpec = tween(durationMillis = 300, delayMillis = 50, easing = ModernAnimations.PerfectSmoothOut),
-                                    initialScale = 0.7f
-                                ),
-                                exit = slideOutVertically(
-                                    animationSpec = tween(durationMillis = 200, delayMillis = 75),
-                                    targetOffsetY = { it / 2 } // 向中间位置收回
-                                ) + fadeOut(
-                                    animationSpec = tween(durationMillis = 150, delayMillis = 75)
-                                ) + scaleOut(
-                                    animationSpec = tween(durationMillis = 200, delayMillis = 75),
-                                    targetScale = 0.7f
-                                )
-                            ) {
-                                Column(horizontalAlignment = Alignment.Start) {
-                                    AppLaunchButton(
-                                        onClick = { fabExpanded = false },
-                                        navController = navController,
-                                        route = "add_bill_all", // 这个路由不会真正使用，但需要保留参数
-                                        icon = Icons.AutoMirrored.Filled.ReceiptLong,
-                                        text = "添加账单",
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = Color.White,
-                                        onLaunchStateChange = { launching -> isLaunching = launching },
-                                        onRouteNavigate = { 
-                                            // 立即触发回调函数，显示叠加页面
-                                            onAddBillClick()
-                                            // 返回false，阻止默认导航行为
-                                            false 
+                            // 一体化变形菜单容器
+                            val isDark = isSystemInDarkTheme()
+                            Box(
+                                modifier = Modifier
+                                    // 玻璃效果背景
+                                    .graphicsLayer {
+                                        // 可以在这里添加按下时的缩放效果
+                                    }
+                                    .then(
+                                        if (topBarBackdrop != null) {
+                                            val density = LocalDensity.current
+                                            Modifier.drawBackdrop(
+                                                backdrop = topBarBackdrop,
+                                                shape = { RoundedCornerShape(20.dp) },
+                                                effects = {
+                                                    vibrancy()
+                                                    blur(12f.dp.toPx())
+                                                    lens(20f.dp.toPx(), 20f.dp.toPx())
+                                                },
+                                                onDrawSurface = { 
+                                                    // 浅色背景以增强可见性
+                                                    drawRect(
+                                                        if (!isDark) Color(0xFFFAFAFA).copy(alpha = 0.4f) 
+                                                        else Color(0xFF121212).copy(alpha = 0.4f)
+                                                    ) 
+                                                }
+                                            )
+                                        } else {
+                                            Modifier
+                                                .clip(RoundedCornerShape(20.dp))
+                                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                                         }
                                     )
-                                    Spacer(Modifier.height(12.dp))
-                                }
-                            }
-                            
-                            AnimatedVisibility(
-                                visible = fabExpanded,
-                                enter = slideInVertically(
-                                    animationSpec = tween(durationMillis = 300, delayMillis = 100, easing = ModernAnimations.PerfectSmoothOut),
-                                    initialOffsetY = { it / 3 } // 从中间位置向上飞出，比第一个稍低
-                                ) + fadeIn(
-                                    animationSpec = tween(durationMillis = 200, delayMillis = 100)
-                                ) + scaleIn(
-                                    animationSpec = tween(durationMillis = 300, delayMillis = 100, easing = ModernAnimations.PerfectSmoothOut),
-                                    initialScale = 0.7f
-                                ),
-                                exit = slideOutVertically(
-                                    animationSpec = tween(durationMillis = 200, delayMillis = 0),
-                                    targetOffsetY = { it / 3 } // 向中间位置收回
-                                ) + fadeOut(
-                                    animationSpec = tween(durationMillis = 150, delayMillis = 0)
-                                ) + scaleOut(
-                                    animationSpec = tween(durationMillis = 200, delayMillis = 0),
-                                    targetScale = 0.7f
-                                )
-                            ) {
-                                Column(horizontalAlignment = Alignment.Start) {
-                                    AppLaunchButton(
-                                        onClick = { fabExpanded = false },
-                                        navController = navController,
-                                        route = "add_tenant", // 这个路由不会真正使用，但需要保留参数
-                                        icon = Icons.Default.PersonAdd,
-                                        text = "添加租户",
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = Color.White,
-                                        onLaunchStateChange = { launching -> isLaunching = launching },
-                                        onRouteNavigate = { 
-                                            // 立即触发回调函数，显示叠加页面
-                                            onAddTenantClick()
-                                            // 返回false，阻止默认导航行为
-                                            false 
-                                        }
+                                    .animateContentSize(
+                                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f)
                                     )
-                                    Spacer(Modifier.height(12.dp))
-                                }
-                            }
-                            
-                            // 圆角矩形的浮动按钮 - 添加旋转动画
-                            val rotationAngle by animateFloatAsState(
-                                targetValue = if (fabExpanded) 45f else 0f, // 展开时旋转45度
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    easing = ModernAnimations.PerfectSmoothOut
-                                ),
-                                label = "fab_rotation"
-                            )
-                            
-                            FloatingActionButton(
-                                onClick = { 
-                                    fabExpanded = !fabExpanded
-                                    updateInteractionTime() // 更新交互时间
-                                },
-                                containerColor = ModernColors.Primary,
-                                contentColor = Color.White,
-                                shape = RoundedCornerShape(ModernCorners.Large),
-                                elevation = FloatingActionButtonDefaults.elevation(
-                                    defaultElevation = ModernElevation.Level2,
-                                    pressedElevation = ModernElevation.Level3
-                                )
                             ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "更多操作",
-                                    modifier = Modifier
-                                        .size(ModernIconSize.Large)
-                                        .graphicsLayer { rotationZ = rotationAngle } // 应用旋转动画
-                                )
+                                // 内容区域：根据状态切换
+                                Box(
+                                    contentAlignment = Alignment.BottomStart
+                                ) {
+                                    if (fabExpanded) {
+                                        // 展开状态：显示选项菜单
+                                        Column(
+                                            modifier = Modifier
+                                                .widthIn(min = 100.dp, max = 160.dp)
+                                                .padding(vertical = 16.dp),
+                                            horizontalAlignment = Alignment.Start
+                                        ) {
+                                            // 选项 1：添加账单
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable { 
+                                                        fabExpanded = false
+                                                        onAddBillClick()
+                                                    }
+                                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.ReceiptLong,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Spacer(Modifier.width(12.dp))
+                                                Text(
+                                                    text = "添加账单",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            
+                                            // 选项 2：添加租户
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable { 
+                                                        fabExpanded = false
+                                                        onAddTenantClick()
+                                                    }
+                                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.PersonAdd,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Spacer(Modifier.width(12.dp))
+                                                Text(
+                                                    text = "添加租户",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        // 收起状态：显示加号图标
+                                        Box(
+                                            modifier = Modifier
+                                                .clickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null,
+                                                    onClick = { fabExpanded = true }
+                                                )
+                                                .size(56.dp)
+                                                .padding(12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Add,
+                                                contentDescription = "添加",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+        },
+        foregroundContent = {
+            // foregroundContent 保持为空或仅用于真正不需要模糊效果的覆盖内容
         }
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TenantCard(tenant: Tenant, navController: NavController, modifier: Modifier = Modifier) {
+fun TenantCard(
+    tenant: Tenant, 
+    navController: NavController, 
+    backdrop: Backdrop? = null,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val viewModel: MainViewModel = viewModel(
@@ -738,23 +762,11 @@ fun TenantCard(tenant: Tenant, navController: NavController, modifier: Modifier 
         }
     }
 
-    // 定义固定的阴影高度 - 不再使用动画效果
-    val cardElevation = ModernElevation.Level2 // 固定较高的阴影效果
-    
-    // 卡片组件 - 使用固定阴影高度和纯白色背景
-    Card(
-        // 使用传入的modifier，而不是硬编码padding
-        modifier = modifier
-            .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = ModernElevation.Level2,
-            pressedElevation = ModernElevation.Level3
-        ),
-        shape = RoundedCornerShape(ModernCorners.Medium),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer, // 使用更中性的表面容器色
-            contentColor = MaterialTheme.colorScheme.onSurface // 使用主题文字色
-        )
+    // 使用 LiquidGlassCard 替换 Material Card
+    LiquidGlassCard(
+        modifier = modifier.fillMaxWidth(),
+        backdrop = backdrop,
+        shape = RoundedCornerShape(ModernCorners.Medium)
     ) {
         Column(
             modifier = Modifier

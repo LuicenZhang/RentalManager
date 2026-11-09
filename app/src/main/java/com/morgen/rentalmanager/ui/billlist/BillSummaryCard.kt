@@ -1,26 +1,23 @@
 package com.morgen.rentalmanager.ui.billlist
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Water
-import androidx.compose.material.icons.filled.ElectricBolt
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.morgen.rentalmanager.ui.components.ElevatedCard
+import androidx.compose.ui.unit.sp
+import com.morgen.rentalmanager.ui.components.LiquidGlassCard
+import com.kyant.backdrop.Backdrop
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.morgen.rentalmanager.ui.theme.*
 
 /**
  * 账单汇总卡片组件
- * 使用网格布局显示统计数据，集成ElevatedCard设计，支持深色模式
+ * 使用渐变背景和现代化布局显示统计数据
  * 
  * @param summary 账单汇总数据
  * @param modifier 修饰符
@@ -28,244 +25,121 @@ import com.morgen.rentalmanager.ui.theme.*
 @Composable
 fun BillSummaryCard(
     summary: BillSummary,
+    backdrop: Backdrop,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    // 根据深色模式选择渐变
+    val isLight = ModernColors.Surface.luminance() > 0.5f
+    val gradientBrush = if (isLight) {
+        ModernGradients.CardBlue
+    } else {
+        ModernGradients.CardDark
+    }
+    
+    LiquidGlassCard(
         modifier = modifier.fillMaxWidth(),
-        defaultElevation = ModernElevation.Level1
+        backdrop = backdrop,
+        shape = RoundedCornerShape(ModernCorners.Medium)
     ) {
-        Column(
-            modifier = Modifier.padding(ModernSpacing.Large),
-            verticalArrangement = Arrangement.spacedBy(ModernSpacing.Medium)
-        ) {
-            // 标题
-            Text(
-                text = "账单汇总",
-                style = MaterialTheme.typography.titleMedium,
-                color = ModernColors.OnSurface,
-                fontWeight = FontWeight.SemiBold
-            )
-            
-            // 检查是否有数据
-            if (!summary.hasAnyAmount()) {
-                // 空状态处理
-                EmptyBillSummaryContent()
-            } else {
-                // 网格布局显示统计数据
-                BillSummaryGrid(summary = summary)
-            }
-        }
-    }
-}
-
-/**
- * 账单汇总网格布局
- * 
- * @param summary 账单汇总数据
- */
-@Composable
-private fun BillSummaryGrid(
-    summary: BillSummary
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(ModernSpacing.Small)
-    ) {
-        // 第一行：租金和水费
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(ModernSpacing.Small)
-        ) {
-            BillSummaryItem(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.Home,
-                label = "总租金",
-                amount = summary.getFormattedTotalRent(),
-                color = ModernColors.Primary
-            )
-            
-            BillSummaryItem(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.Water,
-                label = "总水费",
-                amount = summary.getFormattedTotalWater(),
-                color = ModernColors.Success
-            )
-        }
-        
-        // 第二行：电费和总金额
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(ModernSpacing.Small)
-        ) {
-            BillSummaryItem(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.ElectricBolt,
-                label = "总电费",
-                amount = summary.getFormattedTotalElectricity(),
-                color = ModernColors.Warning
-            )
-            
-            BillSummaryItem(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.AccountBalance,
-                label = "总金额",
-                amount = summary.getFormattedTotalAmount(),
-                color = ModernColors.OnSurface,
-                isTotal = true
-            )
-        }
-    }
-}
-
-/**
- * 单个账单汇总项
- * 
- * @param modifier 修饰符
- * @param icon 图标
- * @param label 标签
- * @param amount 金额
- * @param color 颜色
- * @param isTotal 是否为总金额项
- */
-@Composable
-private fun BillSummaryItem(
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-    label: String,
-    amount: String,
-    color: androidx.compose.ui.graphics.Color,
-    isTotal: Boolean = false
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isTotal) {
-                ModernColors.PrimaryContainer
-            } else {
-                ModernColors.SurfaceVariant
-            }
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp
-        )
-    ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(ModernSpacing.Medium),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(ModernSpacing.Small)
+                .background(brush = gradientBrush)
         ) {
-            // 图标
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (isTotal) ModernColors.OnPrimaryContainer else color,
-                modifier = Modifier.size(ModernIconSize.Large)
-            )
-            
-            // 标签
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = if (isTotal) ModernColors.OnPrimaryContainer else ModernColors.OnSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            
-            // 金额
-            Text(
-                text = "¥$amount",
-                style = if (isTotal) {
-                    MaterialTheme.typography.titleMedium
-                } else {
-                    MaterialTheme.typography.bodyLarge
-                },
-                color = if (isTotal) ModernColors.OnPrimaryContainer else ModernColors.OnSurface,
-                fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Medium,
-                textAlign = TextAlign.Center
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(ModernSpacing.Large),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "本月总收入",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ModernColors.OnSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(ModernSpacing.Small))
+                
+                Text(
+                    text = "¥${summary.getFormattedTotalAmount()}",
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-1).sp
+                    ),
+                    color = ModernColors.Primary
+                )
+                
+                Spacer(modifier = Modifier.height(ModernSpacing.Medium))
+                
+                // 统计详情行
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SummaryItem(
+                        label = "租金",
+                        value = "¥${summary.getFormattedTotalRent()}",
+                        color = ModernColors.OnSurface
+                    )
+                    
+                    SummaryDivider()
+                    
+                    SummaryItem(
+                        label = "水电费",
+                        value = "¥${String.format("%.2f", summary.totalWater + summary.totalElectricity)}",
+                        color = ModernColors.OnSurface
+                    )
+                    
+                    SummaryDivider()
+                    
+                    SummaryItem(
+                        label = "账单数",
+                        value = "${summary.totalBills}",
+                        color = ModernColors.OnSurface
+                    )
+                }
+            }
         }
     }
 }
 
-/**
- * 空状态内容
- */
 @Composable
-private fun EmptyBillSummaryContent() {
+private fun SummaryItem(
+    label: String,
+    value: String,
+    color: Color
+) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(ModernSpacing.Large),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(ModernSpacing.Medium)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 空状态图标
-        Icon(
-            imageVector = Icons.Default.AccountBalance,
-            contentDescription = "暂无数据",
-            tint = ModernColors.OnSurfaceVariant,
-            modifier = Modifier.size(48.dp)
-        )
-        
-        // 空状态文字
         Text(
-            text = "暂无账单数据",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ModernColors.OnSurfaceVariant,
-            textAlign = TextAlign.Center
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = ModernColors.OnSurfaceVariant
         )
-        
-        // 提示文字
         Text(
-            text = "当前月份还没有生成账单",
-            style = MaterialTheme.typography.bodySmall,
-            color = ModernColors.OnSurfaceTertiary,
-            textAlign = TextAlign.Center
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            color = color,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
 
-// 预览组件
-@Preview(name = "账单汇总卡片 - 有数据")
 @Composable
-private fun BillSummaryCardPreview() {
-    MaterialTheme {
-        BillSummaryCard(
-            summary = BillSummary(
-                totalRent = 3000.0,
-                totalWater = 150.50,
-                totalElectricity = 280.75,
-                totalAmount = 3431.25
-            ),
-            modifier = Modifier.padding(16.dp)
-        )
-    }
+private fun SummaryDivider() {
+    Box(
+        modifier = Modifier
+            .height(24.dp)
+            .width(1.dp)
+            .background(ModernColors.OutlineVariant)
+    )
 }
 
-@Preview(name = "账单汇总卡片 - 空状态")
-@Composable
-private fun BillSummaryCardEmptyPreview() {
-    MaterialTheme {
-        BillSummaryCard(
-            summary = BillSummary(),
-            modifier = Modifier.padding(16.dp)
-        )
-    }
-}
-
-@Preview(name = "账单汇总卡片 - 深色模式", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun BillSummaryCardDarkPreview() {
-    MaterialTheme {
-        BillSummaryCard(
-            summary = BillSummary(
-                totalRent = 3000.0,
-                totalWater = 150.50,
-                totalElectricity = 280.75,
-                totalAmount = 3431.25
-            ),
-            modifier = Modifier.padding(16.dp)
-        )
-    }
+/**
+ * 扩展函数：获取颜色的亮度值
+ */
+private fun Color.luminance(): Float {
+    return (red * 0.299f + green * 0.587f + blue * 0.114f)
 }

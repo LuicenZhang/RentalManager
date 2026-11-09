@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.morgen.rentalmanager.ui.theme.*
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /**
  * BillChartCard组件演示
@@ -15,6 +16,7 @@ import com.morgen.rentalmanager.ui.theme.*
  */
 @Composable
 fun BillChartCardDemo() {
+    val backdrop = rememberLayerBackdrop()
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -54,7 +56,8 @@ fun BillChartCardDemo() {
                     rentColor = getChartColors().first,
                     waterColor = getChartColors().second,
                     electricityColor = getChartColors().third
-                )
+                ),
+                backdrop = backdrop
             )
         }
         
@@ -82,7 +85,8 @@ fun BillChartCardDemo() {
                     rentColor = getChartColors().first,
                     waterColor = getChartColors().second,
                     electricityColor = getChartColors().third
-                )
+                ),
+                backdrop = backdrop
             )
         }
         
@@ -110,7 +114,8 @@ fun BillChartCardDemo() {
                     rentColor = getChartColors().first,
                     waterColor = getChartColors().second,
                     electricityColor = getChartColors().third
-                )
+                ),
+                backdrop = backdrop
             )
         }
         
@@ -126,7 +131,8 @@ fun BillChartCardDemo() {
             
             // 空数据的图表
             BillChartCard(
-                chartData = emptyList()
+                chartData = emptyList(),
+                backdrop = backdrop
             )
         }
         
@@ -154,7 +160,8 @@ fun BillChartCardDemo() {
                     rentColor = getChartColors().first,
                     waterColor = getChartColors().second,
                     electricityColor = getChartColors().third
-                )
+                ),
+                backdrop = backdrop
             )
         }
     }
