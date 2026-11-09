@@ -13,8 +13,8 @@ android {
         applicationId = "com.morgen.rentalmanager"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.1.0"
+        versionCode = 2
+        versionName = "1.2.0"
 
         // RenderScript is deprecated, using alternative blur implementations
 
